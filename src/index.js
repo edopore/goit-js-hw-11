@@ -35,7 +35,6 @@ submitForm.addEventListener("click", (event) => {
       }
       Notify.success(`Hooray! We found ${totalHits} images.`);
       hits.forEach((element) => {
-        console.log(element);
         imageGallery.innerHTML += `
                 <div class="photo-card">
                 <a href="${element.largeImageURL}">
