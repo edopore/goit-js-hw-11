@@ -1,5 +1,7 @@
 import { fetchApiAsync } from "./pixabay-api";
 import { Notify } from "notiflix/build/notiflix-notify-aio";
+import SimpleLightbox from "simplelightbox";
+import "simplelightbox/dist/simple-lightbox.min.css";
 
 const inputForm = document.querySelector("input");
 const submitForm = document.querySelector("button");
@@ -33,9 +35,12 @@ submitForm.addEventListener("click", (event) => {
       }
       Notify.success(`Hooray! We found ${totalHits} images.`);
       hits.forEach((element) => {
+        console.log(element);
         imageGallery.innerHTML += `
                 <div class="photo-card">
-                    <img src="${element.largeImageURL}" alt="${element.pageURL}" loading="lazy" />
+                <a href="${element.largeImageURL}">
+                    <img src="${element.previewURL}" alt="${element.pageURL}" loading="lazy" />
+                    </a>
                     <div class="info">
                         <p class="info-item">
                             <b>Likes</b>
@@ -56,6 +61,7 @@ submitForm.addEventListener("click", (event) => {
                     </div>
                 </div>
                 `;
+        lightbox.refresh();
       });
     } catch (error) {
       console.log(error);
@@ -86,7 +92,9 @@ buttonMore.addEventListener("click", (event) => {
       hits.forEach((element) => {
         imageGallery.innerHTML += `
                 <div class="photo-card">
-                    <img src="${element.largeImageURL}" alt="${element.pageURL}" loading="lazy" />
+                <a href="${element.largeImageURL}">
+                    <img src="${element.previewURL}" alt="${element.pageURL}" loading="lazy" />
+                    </a>
                     <div class="info">
                         <p class="info-item">
                             <b>Likes</b>
@@ -107,10 +115,15 @@ buttonMore.addEventListener("click", (event) => {
                     </div>
                 </div>
                 `;
+        lightbox.refresh();
       });
     } catch (error) {
       console.log(error);
     }
   };
   result(inputForm.value, pageCounter);
+});
+
+var lightbox = new SimpleLightbox(".gallery a", {
+  /* options */
 });
