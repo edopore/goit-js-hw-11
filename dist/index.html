@@ -9,11 +9,14 @@
 
   </head>
   <body>
-    <select class="breed-select"></select>
-    <p class="loader">Loading data, please wait...</p>
-    <p class="error">Oops! Something went wrong! Try reloading the page!</p>
-    <div class="cat-info"></div>
-
+    <form class="search-form" id="search-form">
+      <input type="text" name="searchQuery" autocomplete="off" placeholder="Search images...">
+      <button type="submit">Search</button>
+    </form>
+    <div class="gallery">
+      <!-- Tarjetas de imágenes -->
+    </div>
+    <button type="button" class="load-more">Load more</button>
     <script src="/index.975ef6c8.js" defer=""></script>
   </body>
 </html>

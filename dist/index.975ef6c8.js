@@ -504,82 +504,156 @@ function hmrAcceptRun(bundle, id) {
 
 },{}],"8lqZg":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
-var _slimSelect = require("slim-select");
-var _slimSelectDefault = parcelHelpers.interopDefault(_slimSelect);
+var _pixabayApi = require("./pixabay-api");
 var _notiflixNotifyAio = require("notiflix/build/notiflix-notify-aio");
-var _catApi = require("./cat-api");
-const selectItem = document.querySelector("select");
-const catInfo = document.querySelector(".cat-info");
-const pLoading = document.querySelector(".loader");
-const pError = document.querySelector(".error");
-const catImage = document.createElement("img");
-const catDesc = document.createElement("div");
-const catBreed = document.createElement("div");
-const catBreedTitle = document.createElement("h2");
-const breedDesc = document.createElement("p");
-const catTemperament = document.createElement("p");
-const firstOption = document.createElement("option");
-firstOption.textContent = "Select an option!!!";
-catDesc.setAttribute("class", "cat-desc");
-catBreed.setAttribute("class", "cat-params");
-catBreed.append(catBreedTitle, breedDesc, catTemperament);
-catDesc.append(catImage, catBreed);
-catInfo.append(catDesc);
-selectItem.append(firstOption);
-(0, _catApi.fetchBreeds)().then((data)=>{
-    try {
-        pLoading.classList.toggle("error-view");
-        data.forEach((element)=>{
-            let item = document.createElement("option");
-            item.setAttribute("value", element.id);
-            item.textContent = element.name;
-            selectItem.append(item);
-        });
-        new (0, _slimSelectDefault.default)({
-            select: ".breed-select"
-        });
-        setTimeout(()=>{
-            pLoading.classList.toggle("error-view");
-        }, 500);
-    } catch (error) {
-        (0, _notiflixNotifyAio.Notify).failure(pError.textContent);
-    }
-}).catch(()=>{
-    (0, _notiflixNotifyAio.Notify).failure(pError.textContent);
+var _simplelightbox = require("simplelightbox");
+var _simplelightboxDefault = parcelHelpers.interopDefault(_simplelightbox);
+var _simpleLightboxMinCss = require("simplelightbox/dist/simple-lightbox.min.css");
+const inputForm = document.querySelector("input");
+const submitForm = document.querySelector("button");
+const imageGallery = document.querySelector(".gallery");
+const buttonMore = document.querySelector(".load-more");
+buttonMore.classList.add("btn-more--visible");
+let pageCounter = 1;
+submitForm.addEventListener("click", (event)=>{
+    event.preventDefault();
+    pageCounter = 1;
+    imageGallery.innerHTML = "";
+    if (inputForm.value === "") return (0, _notiflixNotifyAio.Notify).failure("Ingresa en el buscador la palabra clave");
+    const result = async (query)=>{
+        try {
+            buttonMore.classList.remove("btn-more--visible");
+            const response = await (0, _pixabayApi.fetchApiAsync)(query);
+            const { total , totalHits , hits  } = response.data;
+            if (totalHits === 0) {
+                buttonMore.classList.add("btn-more--visible");
+                (0, _notiflixNotifyAio.Notify).failure("Sorry, there are no images matching your search query. Please try again.");
+                return;
+            } else if (totalHits <= 40) buttonMore.classList.add("btn-more--visible");
+            (0, _notiflixNotifyAio.Notify).success(`Hooray! We found ${totalHits} images.`);
+            hits.forEach((element)=>{
+                imageGallery.innerHTML += `
+                <div class="photo-card">
+                <a href="${element.largeImageURL}">
+                    <img src="${element.previewURL}" alt="${element.pageURL}" loading="lazy" />
+                    </a>
+                    <div class="info">
+                        <p class="info-item">
+                            <b>Likes</b>
+                            ${element.likes}
+                        </p>
+                        <p class="info-item">
+                            <b>Views</b>
+                            ${element.views}
+                        </p>
+                        <p class="info-item">
+                            <b>Comments</b>
+                            ${element.comments}
+                        </p>
+                        <p class="info-item">
+                            <b>Downloads</b>
+                            ${element.downloads}
+                        </p>
+                    </div>
+                </div>
+                `;
+                lightbox.refresh();
+            });
+        } catch (error) {
+            console.log(error);
+        }
+    };
+    result(inputForm.value);
 });
-selectItem.addEventListener("change", ()=>{
-    pLoading.classList.toggle("error-view");
-    (0, _catApi.fetchCatByBreed)(selectItem.value).then((data)=>{
-        catImage.setAttribute("src", data[0].url);
-        catImage.setAttribute("width", "350");
-        return data[0];
-    }).then(({ breeds  })=>{
-        catBreedTitle.textContent = breeds[0].name;
-        breedDesc.textContent = breeds[0].description;
-        catTemperament.innerHTML = "<span>Temperament: </span>" + breeds[0].temperament;
-    }).catch(()=>{
-        (0, _notiflixNotifyAio.Notify).failure(pError.textContent);
-    });
-    setTimeout(()=>{
-        pLoading.classList.toggle("error-view");
-    }, 500);
+buttonMore.addEventListener("click", (event)=>{
+    event.preventDefault();
+    pageCounter++;
+    const result = async (query, page)=>{
+        try {
+            buttonMore.classList.remove("btn-more--visible");
+            const response = await (0, _pixabayApi.fetchApiAsync)(query, page);
+            const { total , totalHits , hits  } = response.data;
+            if (totalHits === 0) {
+                buttonMore.classList.add("btn-more--visible");
+                return (0, _notiflixNotifyAio.Notify).failure("Sorry, there are no images matching your search query. Please try again.");
+            } else if (totalHits <= 40 || pageCounter >= Math.ceil(totalHits / 40)) {
+                buttonMore.classList.add("btn-more--visible");
+                (0, _notiflixNotifyAio.Notify).warning("We're sorry, but you've reached the end of search results.");
+            }
+            hits.forEach((element)=>{
+                imageGallery.innerHTML += `
+                <div class="photo-card">
+                <a href="${element.largeImageURL}">
+                    <img src="${element.previewURL}" alt="${element.pageURL}" loading="lazy" />
+                    </a>
+                    <div class="info">
+                        <p class="info-item">
+                            <b>Likes</b>
+                            ${element.likes}
+                        </p>
+                        <p class="info-item">
+                            <b>Views</b>
+                            ${element.views}
+                        </p>
+                        <p class="info-item">
+                            <b>Comments</b>
+                            ${element.comments}
+                        </p>
+                        <p class="info-item">
+                            <b>Downloads</b>
+                            ${element.downloads}
+                        </p>
+                    </div>
+                </div>
+                `;
+                lightbox.refresh();
+            });
+        } catch (error) {
+            console.log(error);
+        }
+    };
+    result(inputForm.value, pageCounter);
+});
+var lightbox = new (0, _simplelightboxDefault.default)(".gallery a", {
 });
 
-},{"./cat-api":"d7YdZ","slim-select":"lzHUr","notiflix/build/notiflix-notify-aio":"eXQLZ","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"d7YdZ":[function(require,module,exports) {
+},{"./pixabay-api":"ebejz","notiflix/build/notiflix-notify-aio":"eXQLZ","simplelightbox":"9ydBq","simplelightbox/dist/simple-lightbox.min.css":"kaxSc","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"ebejz":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 var _axios = require("axios");
 var _axiosDefault = parcelHelpers.interopDefault(_axios);
-(0, _axiosDefault.default).defaults.headers.common["x-api-key"] = "live_0wIhaeoDJAEGu9P7tzckt9shsFx4HUWYgg7HsaACP284dQCz1boSPmpHnPivarpO";
-const BASE_URL = `https://api.thecatapi.com/v1/`;
-function fetchBreeds() {
-    return (0, _axiosDefault.default).get(BASE_URL + "breeds").then(({ data  })=>data).catch((error)=>error);
+const API_KEY = "42343056-d970fc336103e47429fc1ac41";
+const query_options = {
+    imageType: "photo",
+    orientation: "horizontal",
+    safeSearch: "true",
+    pretty: "true",
+    perPage: 40
+};
+const BASE_URL = `https://pixabay.com/api/`;
+function fetchApi(query) {
+    return (0, _axiosDefault.default).get(BASE_URL + `?key=${API_KEY}&q=${query}
+    &image_type=${query_options.imageType}
+    &orientation=${query_options.orientation}
+    &safesearch=${query_options.safeSearch}
+    &pretty=${query_options.pretty}
+    &per_page=${query_options.perPage}`).then((response)=>response).then(({ data  })=>console.log(data));
 }
-function fetchCatByBreed(breed) {
-    return (0, _axiosDefault.default).get(BASE_URL + `images/search?breed_ids=${breed}`).then(({ data  })=>data).catch((error)=>error);
+async function fetchApiAsync(query, page) {
+    const pageParam = page || 1;
+    try {
+        return await (0, _axiosDefault.default).get(BASE_URL + `?key=${API_KEY}&q=${query}
+            &image_type=${query_options.imageType}
+            &orientation=${query_options.orientation}
+            &safesearch=${query_options.safeSearch}
+            &pretty=${query_options.pretty}
+            &page=${pageParam}
+            &per_page=${query_options.perPage}`);
+    } catch (error) {
+        console.log(error);
+    }
 }
 module.exports = {
-    fetchBreeds,
-    fetchCatByBreed
+    fetchApiAsync
 };
 
 },{"axios":"jo6P5","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"jo6P5":[function(require,module,exports) {
@@ -4985,1461 +5059,7 @@ Object.entries(HttpStatusCode).forEach(([key, value])=>{
 });
 exports.default = HttpStatusCode;
 
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"lzHUr":[function(require,module,exports) {
-(function(global, factory) {
-    module.exports = factory();
-})(this, function() {
-    "use strict";
-    function generateID() {
-        return Math.random().toString(36).substring(2, 10);
-    }
-    function hasClassInTree(element, className) {
-        function hasClass(e, c) {
-            if (c && e && e.classList && e.classList.contains(c)) return e;
-            if (c && e && e.dataset && e.dataset.id && e.dataset.id === className) return e;
-            return null;
-        }
-        function parentByClass(e, c) {
-            if (!e || e === document) return null;
-            else if (hasClass(e, c)) return e;
-            else return parentByClass(e.parentNode, c);
-        }
-        return hasClass(element, className) || parentByClass(element, className);
-    }
-    function debounce(func, wait = 50, immediate = false) {
-        let timeout;
-        return function(...args) {
-            const context = self;
-            const later = ()=>{
-                timeout = null;
-                if (!immediate) func.apply(context, args);
-            };
-            const callNow = immediate && !timeout;
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-            if (callNow) func.apply(context, args);
-        };
-    }
-    function isEqual(a, b) {
-        return JSON.stringify(a) === JSON.stringify(b);
-    }
-    function kebabCase(str) {
-        const result = str.replace(/[A-Z\u00C0-\u00D6\u00D8-\u00DE]/g, (match)=>"-" + match.toLowerCase());
-        return str[0] === str[0].toUpperCase() ? result.substring(1) : result;
-    }
-    class Optgroup {
-        constructor(optgroup){
-            this.id = !optgroup.id || optgroup.id === "" ? generateID() : optgroup.id;
-            this.label = optgroup.label || "";
-            this.selectAll = optgroup.selectAll === undefined ? false : optgroup.selectAll;
-            this.selectAllText = optgroup.selectAllText || "Select All";
-            this.closable = optgroup.closable || "off";
-            this.options = [];
-            if (optgroup.options) for (const o of optgroup.options)this.options.push(new Option(o));
-        }
-    }
-    class Option {
-        constructor(option){
-            this.id = !option.id || option.id === "" ? generateID() : option.id;
-            this.value = option.value === undefined ? option.text : option.value;
-            this.text = option.text || "";
-            this.html = option.html || "";
-            this.selected = option.selected !== undefined ? option.selected : false;
-            this.display = option.display !== undefined ? option.display : true;
-            this.disabled = option.disabled !== undefined ? option.disabled : false;
-            this.mandatory = option.mandatory !== undefined ? option.mandatory : false;
-            this.placeholder = option.placeholder !== undefined ? option.placeholder : false;
-            this.class = option.class || "";
-            this.style = option.style || "";
-            this.data = option.data || {};
-        }
-    }
-    class Store {
-        constructor(type, data){
-            this.selectType = "single";
-            this.data = [];
-            this.selectType = type;
-            this.setData(data);
-        }
-        validateDataArray(data) {
-            if (!Array.isArray(data)) return new Error("Data must be an array");
-            for (let dataObj of data){
-                if (dataObj instanceof Optgroup || "label" in dataObj) {
-                    if (!("label" in dataObj)) return new Error("Optgroup must have a label");
-                    if ("options" in dataObj && dataObj.options) {
-                        for (let option of dataObj.options)return this.validateOption(option);
-                    }
-                } else if (dataObj instanceof Option || "text" in dataObj) return this.validateOption(dataObj);
-                else return new Error("Data object must be a valid optgroup or option");
-            }
-            return null;
-        }
-        validateOption(option) {
-            if (!("text" in option)) return new Error("Option must have a text");
-            return null;
-        }
-        partialToFullData(data) {
-            let dataFinal = [];
-            data.forEach((dataObj)=>{
-                if (dataObj instanceof Optgroup || "label" in dataObj) {
-                    let optOptions = [];
-                    if ("options" in dataObj && dataObj.options) dataObj.options.forEach((option)=>{
-                        optOptions.push(new Option(option));
-                    });
-                    if (optOptions.length > 0) dataFinal.push(new Optgroup(dataObj));
-                }
-                if (dataObj instanceof Option || "text" in dataObj) dataFinal.push(new Option(dataObj));
-            });
-            return dataFinal;
-        }
-        setData(data) {
-            this.data = this.partialToFullData(data);
-            if (this.selectType === "single") this.setSelectedBy("value", this.getSelected());
-        }
-        getData() {
-            return this.filter(null, true);
-        }
-        getDataOptions() {
-            return this.filter(null, false);
-        }
-        addOption(option) {
-            this.setData(this.getData().concat(new Option(option)));
-        }
-        setSelectedBy(selectedType, selectedValues) {
-            let firstOption = null;
-            let hasSelected = false;
-            for (let dataObj of this.data){
-                if (dataObj instanceof Optgroup) for (let option of dataObj.options){
-                    if (!firstOption) firstOption = option;
-                    option.selected = hasSelected ? false : selectedValues.includes(option[selectedType]);
-                    if (option.selected && this.selectType === "single") hasSelected = true;
-                }
-                if (dataObj instanceof Option) {
-                    if (!firstOption) firstOption = dataObj;
-                    dataObj.selected = hasSelected ? false : selectedValues.includes(dataObj[selectedType]);
-                    if (dataObj.selected && this.selectType === "single") hasSelected = true;
-                }
-            }
-            if (this.selectType === "single" && firstOption && !hasSelected) firstOption.selected = true;
-        }
-        getSelected() {
-            let selectedOptions = this.getSelectedOptions();
-            let selectedValues = [];
-            selectedOptions.forEach((option)=>{
-                selectedValues.push(option.value);
-            });
-            return selectedValues;
-        }
-        getSelectedOptions() {
-            return this.filter((opt)=>{
-                return opt.selected;
-            }, false);
-        }
-        getSelectedIDs() {
-            let selectedOptions = this.getSelectedOptions();
-            let selectedIDs = [];
-            selectedOptions.forEach((op)=>{
-                selectedIDs.push(op.id);
-            });
-            return selectedIDs;
-        }
-        getOptgroupByID(id) {
-            for (let dataObj of this.data){
-                if (dataObj instanceof Optgroup && dataObj.id === id) return dataObj;
-            }
-            return null;
-        }
-        getOptionByID(id) {
-            let options = this.filter((opt)=>{
-                return opt.id === id;
-            }, false);
-            return options.length ? options[0] : null;
-        }
-        getSelectType() {
-            return this.selectType;
-        }
-        getFirstOption() {
-            let option = null;
-            for (let dataObj of this.data){
-                if (dataObj instanceof Optgroup) option = dataObj.options[0];
-                else if (dataObj instanceof Option) option = dataObj;
-                if (option) break;
-            }
-            return option;
-        }
-        search(search, searchFilter) {
-            search = search.trim();
-            if (search === "") return this.getData();
-            return this.filter((opt)=>{
-                return searchFilter(opt, search);
-            }, true);
-        }
-        filter(filter, includeOptgroup) {
-            const dataSearch = [];
-            this.data.forEach((dataObj)=>{
-                if (dataObj instanceof Optgroup) {
-                    let optOptions = [];
-                    dataObj.options.forEach((option)=>{
-                        if (!filter || filter(option)) {
-                            if (!includeOptgroup) dataSearch.push(new Option(option));
-                            else optOptions.push(new Option(option));
-                        }
-                    });
-                    if (optOptions.length > 0) {
-                        let optgroup = new Optgroup(dataObj);
-                        optgroup.options = optOptions;
-                        dataSearch.push(optgroup);
-                    }
-                }
-                if (dataObj instanceof Option) {
-                    if (!filter || filter(dataObj)) dataSearch.push(new Option(dataObj));
-                }
-            });
-            return dataSearch;
-        }
-    }
-    class Render {
-        constructor(settings, store, callbacks){
-            this.classes = {
-                main: "ss-main",
-                placeholder: "ss-placeholder",
-                values: "ss-values",
-                single: "ss-single",
-                max: "ss-max",
-                value: "ss-value",
-                valueText: "ss-value-text",
-                valueDelete: "ss-value-delete",
-                valueOut: "ss-value-out",
-                deselect: "ss-deselect",
-                deselectPath: "M10,10 L90,90 M10,90 L90,10",
-                arrow: "ss-arrow",
-                arrowClose: "M10,30 L50,70 L90,30",
-                arrowOpen: "M10,70 L50,30 L90,70",
-                content: "ss-content",
-                openAbove: "ss-open-above",
-                openBelow: "ss-open-below",
-                search: "ss-search",
-                searchHighlighter: "ss-search-highlight",
-                searching: "ss-searching",
-                addable: "ss-addable",
-                addablePath: "M50,10 L50,90 M10,50 L90,50",
-                list: "ss-list",
-                optgroup: "ss-optgroup",
-                optgroupLabel: "ss-optgroup-label",
-                optgroupLabelText: "ss-optgroup-label-text",
-                optgroupActions: "ss-optgroup-actions",
-                optgroupSelectAll: "ss-selectall",
-                optgroupSelectAllBox: "M60,10 L10,10 L10,90 L90,90 L90,50",
-                optgroupSelectAllCheck: "M30,45 L50,70 L90,10",
-                optgroupClosable: "ss-closable",
-                option: "ss-option",
-                optionDelete: "M10,10 L90,90 M10,90 L90,10",
-                highlighted: "ss-highlighted",
-                open: "ss-open",
-                close: "ss-close",
-                selected: "ss-selected",
-                error: "ss-error",
-                disabled: "ss-disabled",
-                hide: "ss-hide"
-            };
-            this.store = store;
-            this.settings = settings;
-            this.callbacks = callbacks;
-            this.main = this.mainDiv();
-            this.content = this.contentDiv();
-            this.updateClassStyles();
-            this.updateAriaAttributes();
-            this.settings.contentLocation.appendChild(this.content.main);
-        }
-        enable() {
-            this.main.main.classList.remove(this.classes.disabled);
-            this.content.search.input.disabled = false;
-        }
-        disable() {
-            this.main.main.classList.add(this.classes.disabled);
-            this.content.search.input.disabled = true;
-        }
-        open() {
-            this.main.arrow.path.setAttribute("d", this.classes.arrowOpen);
-            this.main.main.classList.add(this.settings.openPosition === "up" ? this.classes.openAbove : this.classes.openBelow);
-            this.main.main.setAttribute("aria-expanded", "true");
-            this.moveContent();
-            const selectedOptions = this.store.getSelectedOptions();
-            if (selectedOptions.length) {
-                const selectedId = selectedOptions[selectedOptions.length - 1].id;
-                const selectedOption = this.content.list.querySelector('[data-id="' + selectedId + '"]');
-                if (selectedOption) this.ensureElementInView(this.content.list, selectedOption);
-            }
-        }
-        close() {
-            this.main.main.classList.remove(this.classes.openAbove);
-            this.main.main.classList.remove(this.classes.openBelow);
-            this.main.main.setAttribute("aria-expanded", "false");
-            this.content.main.classList.remove(this.classes.openAbove);
-            this.content.main.classList.remove(this.classes.openBelow);
-            this.main.arrow.path.setAttribute("d", this.classes.arrowClose);
-        }
-        updateClassStyles() {
-            this.main.main.className = "";
-            this.main.main.removeAttribute("style");
-            this.content.main.className = "";
-            this.content.main.removeAttribute("style");
-            this.main.main.classList.add(this.classes.main);
-            this.content.main.classList.add(this.classes.content);
-            if (this.settings.style !== "") {
-                this.main.main.style.cssText = this.settings.style;
-                this.content.main.style.cssText = this.settings.style;
-            }
-            if (this.settings.class.length) {
-                for (const c of this.settings.class)if (c.trim() !== "") {
-                    this.main.main.classList.add(c.trim());
-                    this.content.main.classList.add(c.trim());
-                }
-            }
-            if (this.settings.contentPosition === "relative") this.content.main.classList.add("ss-" + this.settings.contentPosition);
-        }
-        updateAriaAttributes() {
-            this.main.main.role = "combobox";
-            this.main.main.setAttribute("aria-haspopup", "listbox");
-            this.main.main.setAttribute("aria-controls", this.content.main.id);
-            this.main.main.setAttribute("aria-expanded", "false");
-            this.content.main.setAttribute("role", "listbox");
-        }
-        mainDiv() {
-            var _a;
-            const main = document.createElement("div");
-            main.dataset.id = this.settings.id;
-            main.setAttribute("aria-label", this.settings.ariaLabel);
-            main.tabIndex = 0;
-            main.onkeydown = (e)=>{
-                switch(e.key){
-                    case "ArrowUp":
-                    case "ArrowDown":
-                        this.callbacks.open();
-                        e.key === "ArrowDown" ? this.highlight("down") : this.highlight("up");
-                        return false;
-                    case "Tab":
-                        this.callbacks.close();
-                        return true;
-                    case "Enter":
-                    case " ":
-                        this.callbacks.open();
-                        const highlighted = this.content.list.querySelector("." + this.classes.highlighted);
-                        if (highlighted) highlighted.click();
-                        return false;
-                    case "Escape":
-                        this.callbacks.close();
-                        return false;
-                }
-                return false;
-            };
-            main.onclick = (e)=>{
-                if (this.settings.disabled) return;
-                this.settings.isOpen ? this.callbacks.close() : this.callbacks.open();
-            };
-            const values = document.createElement("div");
-            values.classList.add(this.classes.values);
-            main.appendChild(values);
-            const deselect = document.createElement("div");
-            deselect.classList.add(this.classes.deselect);
-            const selectedOptions = (_a = this.store) === null || _a === void 0 ? void 0 : _a.getSelectedOptions();
-            if (!this.settings.allowDeselect || this.settings.isMultiple && selectedOptions && selectedOptions.length <= 0) deselect.classList.add(this.classes.hide);
-            else deselect.classList.remove(this.classes.hide);
-            deselect.onclick = (e)=>{
-                e.stopPropagation();
-                if (this.settings.disabled) return;
-                let shouldDelete = true;
-                const before = this.store.getSelectedOptions();
-                const after = [];
-                if (this.callbacks.beforeChange) shouldDelete = this.callbacks.beforeChange(after, before) === true;
-                if (shouldDelete) {
-                    if (this.settings.isMultiple) {
-                        this.callbacks.setSelected([], false);
-                        this.updateDeselectAll();
-                    } else {
-                        const firstOption = this.store.getFirstOption();
-                        const value = firstOption ? firstOption.value : "";
-                        this.callbacks.setSelected(value, false);
-                    }
-                    if (this.settings.closeOnSelect) this.callbacks.close();
-                    if (this.callbacks.afterChange) this.callbacks.afterChange(this.store.getSelectedOptions());
-                }
-            };
-            const deselectSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-            deselectSvg.setAttribute("viewBox", "0 0 100 100");
-            const deselectPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-            deselectPath.setAttribute("d", this.classes.deselectPath);
-            deselectSvg.appendChild(deselectPath);
-            deselect.appendChild(deselectSvg);
-            main.appendChild(deselect);
-            const arrow = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-            arrow.classList.add(this.classes.arrow);
-            arrow.setAttribute("viewBox", "0 0 100 100");
-            const arrowPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-            arrowPath.setAttribute("d", this.classes.arrowClose);
-            if (this.settings.alwaysOpen) arrow.classList.add(this.classes.hide);
-            arrow.appendChild(arrowPath);
-            main.appendChild(arrow);
-            return {
-                main: main,
-                values: values,
-                deselect: {
-                    main: deselect,
-                    svg: deselectSvg,
-                    path: deselectPath
-                },
-                arrow: {
-                    main: arrow,
-                    path: arrowPath
-                }
-            };
-        }
-        mainFocus(eventType) {
-            if (eventType !== "click") this.main.main.focus({
-                preventScroll: true
-            });
-        }
-        placeholder() {
-            const placeholderOption = this.store.filter((o)=>o.placeholder, false);
-            let placeholderText = this.settings.placeholderText;
-            if (placeholderOption.length) {
-                if (placeholderOption[0].html !== "") placeholderText = placeholderOption[0].html;
-                else if (placeholderOption[0].text !== "") placeholderText = placeholderOption[0].text;
-            }
-            const placeholder = document.createElement("div");
-            placeholder.classList.add(this.classes.placeholder);
-            placeholder.innerHTML = placeholderText;
-            return placeholder;
-        }
-        renderValues() {
-            if (!this.settings.isMultiple) {
-                this.renderSingleValue();
-                return;
-            }
-            this.renderMultipleValues();
-            this.updateDeselectAll();
-        }
-        renderSingleValue() {
-            const selected = this.store.filter((o)=>{
-                return o.selected && !o.placeholder;
-            }, false);
-            const selectedSingle = selected.length > 0 ? selected[0] : null;
-            if (!selectedSingle) this.main.values.innerHTML = this.placeholder().outerHTML;
-            else {
-                const singleValue = document.createElement("div");
-                singleValue.classList.add(this.classes.single);
-                if (selectedSingle.html) singleValue.innerHTML = selectedSingle.html;
-                else singleValue.innerText = selectedSingle.text;
-                this.main.values.innerHTML = singleValue.outerHTML;
-            }
-            if (!this.settings.allowDeselect || !selected.length) this.main.deselect.main.classList.add(this.classes.hide);
-            else this.main.deselect.main.classList.remove(this.classes.hide);
-        }
-        renderMultipleValues() {
-            let currentNodes = this.main.values.childNodes;
-            let selectedOptions = this.store.filter((opt)=>{
-                return opt.selected && opt.display;
-            }, false);
-            if (selectedOptions.length === 0) {
-                this.main.values.innerHTML = this.placeholder().outerHTML;
-                return;
-            } else {
-                const placeholder = this.main.values.querySelector("." + this.classes.placeholder);
-                if (placeholder) placeholder.remove();
-            }
-            if (selectedOptions.length > this.settings.maxValuesShown) {
-                const singleValue = document.createElement("div");
-                singleValue.classList.add(this.classes.max);
-                singleValue.textContent = this.settings.maxValuesMessage.replace("{number}", selectedOptions.length.toString());
-                this.main.values.innerHTML = singleValue.outerHTML;
-                return;
-            } else {
-                const maxValuesMessage = this.main.values.querySelector("." + this.classes.max);
-                if (maxValuesMessage) maxValuesMessage.remove();
-            }
-            let removeNodes = [];
-            for(let i = 0; i < currentNodes.length; i++){
-                const node = currentNodes[i];
-                const id = node.getAttribute("data-id");
-                if (id) {
-                    const found = selectedOptions.filter((opt)=>{
-                        return opt.id === id;
-                    }, false);
-                    if (!found.length) removeNodes.push(node);
-                }
-            }
-            for (const n of removeNodes){
-                n.classList.add(this.classes.valueOut);
-                setTimeout(()=>{
-                    if (this.main.values.hasChildNodes() && this.main.values.contains(n)) this.main.values.removeChild(n);
-                }, 100);
-            }
-            currentNodes = this.main.values.childNodes;
-            for(let d = 0; d < selectedOptions.length; d++){
-                let shouldAdd = true;
-                for(let i = 0; i < currentNodes.length; i++)if (selectedOptions[d].id === String(currentNodes[i].dataset.id)) shouldAdd = false;
-                if (shouldAdd) {
-                    if (this.settings.keepOrder) this.main.values.appendChild(this.multipleValue(selectedOptions[d]));
-                    else {
-                        if (currentNodes.length === 0) this.main.values.appendChild(this.multipleValue(selectedOptions[d]));
-                        else if (d === 0) this.main.values.insertBefore(this.multipleValue(selectedOptions[d]), currentNodes[d]);
-                        else currentNodes[d - 1].insertAdjacentElement("afterend", this.multipleValue(selectedOptions[d]));
-                    }
-                }
-            }
-        }
-        multipleValue(option) {
-            const value = document.createElement("div");
-            value.classList.add(this.classes.value);
-            value.dataset.id = option.id;
-            const text = document.createElement("div");
-            text.classList.add(this.classes.valueText);
-            text.innerText = option.text;
-            value.appendChild(text);
-            if (!option.mandatory) {
-                const deleteDiv = document.createElement("div");
-                deleteDiv.classList.add(this.classes.valueDelete);
-                deleteDiv.onclick = (e)=>{
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (this.settings.disabled) return;
-                    let shouldDelete = true;
-                    const before = this.store.getSelectedOptions();
-                    const after = before.filter((o)=>{
-                        return o.selected && o.id !== option.id;
-                    }, true);
-                    if (this.settings.minSelected && after.length < this.settings.minSelected) return;
-                    if (this.callbacks.beforeChange) shouldDelete = this.callbacks.beforeChange(after, before) === true;
-                    if (shouldDelete) {
-                        let selectedValues = [];
-                        for (const o of after){
-                            if (o instanceof Optgroup) for (const c of o.options)selectedValues.push(c.value);
-                            if (o instanceof Option) selectedValues.push(o.value);
-                        }
-                        this.callbacks.setSelected(selectedValues, false);
-                        if (this.settings.closeOnSelect) this.callbacks.close();
-                        if (this.callbacks.afterChange) this.callbacks.afterChange(after);
-                        this.updateDeselectAll();
-                    }
-                };
-                const deleteSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-                deleteSvg.setAttribute("viewBox", "0 0 100 100");
-                const deletePath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-                deletePath.setAttribute("d", this.classes.optionDelete);
-                deleteSvg.appendChild(deletePath);
-                deleteDiv.appendChild(deleteSvg);
-                value.appendChild(deleteDiv);
-            }
-            return value;
-        }
-        contentDiv() {
-            const main = document.createElement("div");
-            main.dataset.id = this.settings.id;
-            const search = this.searchDiv();
-            main.appendChild(search.main);
-            const list = this.listDiv();
-            main.appendChild(list);
-            return {
-                main: main,
-                search: search,
-                list: list
-            };
-        }
-        moveContent() {
-            if (this.settings.contentPosition === "relative") {
-                this.moveContentBelow();
-                return;
-            }
-            if (this.settings.openPosition === "down") {
-                this.moveContentBelow();
-                return;
-            } else if (this.settings.openPosition === "up") {
-                this.moveContentAbove();
-                return;
-            }
-            if (this.putContent() === "up") this.moveContentAbove();
-            else this.moveContentBelow();
-        }
-        searchDiv() {
-            const main = document.createElement("div");
-            const input = document.createElement("input");
-            const addable = document.createElement("div");
-            main.classList.add(this.classes.search);
-            const searchReturn = {
-                main,
-                input
-            };
-            if (!this.settings.showSearch) {
-                main.classList.add(this.classes.hide);
-                input.readOnly = true;
-            }
-            input.type = "search";
-            input.placeholder = this.settings.searchPlaceholder;
-            input.tabIndex = -1;
-            input.setAttribute("aria-label", this.settings.searchPlaceholder);
-            input.setAttribute("autocapitalize", "off");
-            input.setAttribute("autocomplete", "off");
-            input.setAttribute("autocorrect", "off");
-            input.oninput = debounce((e)=>{
-                this.callbacks.search(e.target.value);
-            }, 100);
-            input.onkeydown = (e)=>{
-                switch(e.key){
-                    case "ArrowUp":
-                    case "ArrowDown":
-                        e.key === "ArrowDown" ? this.highlight("down") : this.highlight("up");
-                        return false;
-                    case "Tab":
-                        this.callbacks.close();
-                        return true;
-                    case "Escape":
-                        this.callbacks.close();
-                        return false;
-                    case "Enter":
-                    case " ":
-                        if (this.callbacks.addable && e.ctrlKey) {
-                            addable.click();
-                            return false;
-                        } else {
-                            const highlighted = this.content.list.querySelector("." + this.classes.highlighted);
-                            if (highlighted) {
-                                highlighted.click();
-                                return false;
-                            }
-                        }
-                        return true;
-                }
-                return true;
-            };
-            main.appendChild(input);
-            if (this.callbacks.addable) {
-                addable.classList.add(this.classes.addable);
-                const plus = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-                plus.setAttribute("viewBox", "0 0 100 100");
-                const plusPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-                plusPath.setAttribute("d", this.classes.addablePath);
-                plus.appendChild(plusPath);
-                addable.appendChild(plus);
-                addable.onclick = (e)=>{
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (!this.callbacks.addable) return;
-                    const inputValue = this.content.search.input.value.trim();
-                    if (inputValue === "") {
-                        this.content.search.input.focus();
-                        return;
-                    }
-                    const runFinish = (oo)=>{
-                        let newOption = new Option(oo);
-                        this.callbacks.addOption(newOption);
-                        if (this.settings.isMultiple) {
-                            let values = this.store.getSelected();
-                            values.push(newOption.value);
-                            this.callbacks.setSelected(values, true);
-                        } else this.callbacks.setSelected([
-                            newOption.value
-                        ], true);
-                        this.callbacks.search("");
-                        if (this.settings.closeOnSelect) setTimeout(()=>{
-                            this.callbacks.close();
-                        }, 100);
-                    };
-                    const addableValue = this.callbacks.addable(inputValue);
-                    if (addableValue === false || addableValue === undefined || addableValue === null) return;
-                    if (addableValue instanceof Promise) addableValue.then((value)=>{
-                        if (typeof value === "string") runFinish({
-                            text: value,
-                            value: value
-                        });
-                        else runFinish(value);
-                    });
-                    else if (typeof addableValue === "string") runFinish({
-                        text: addableValue,
-                        value: addableValue
-                    });
-                    else runFinish(addableValue);
-                    return;
-                };
-                main.appendChild(addable);
-                searchReturn.addable = {
-                    main: addable,
-                    svg: plus,
-                    path: plusPath
-                };
-            }
-            return searchReturn;
-        }
-        searchFocus() {
-            this.content.search.input.focus();
-        }
-        getOptions(notPlaceholder = false, notDisabled = false, notHidden = false) {
-            let query = "." + this.classes.option;
-            if (notPlaceholder) query += ":not(." + this.classes.placeholder + ")";
-            if (notDisabled) query += ":not(." + this.classes.disabled + ")";
-            if (notHidden) query += ":not(." + this.classes.hide + ")";
-            return Array.from(this.content.list.querySelectorAll(query));
-        }
-        highlight(dir) {
-            const options = this.getOptions(true, true, true);
-            if (options.length === 0) return;
-            if (options.length === 1) {
-                if (!options[0].classList.contains(this.classes.highlighted)) {
-                    options[0].classList.add(this.classes.highlighted);
-                    return;
-                }
-            }
-            let highlighted = false;
-            for (const o of options)if (o.classList.contains(this.classes.highlighted)) highlighted = true;
-            if (!highlighted) {
-                for (const o of options)if (o.classList.contains(this.classes.selected)) {
-                    o.classList.add(this.classes.highlighted);
-                    break;
-                }
-            }
-            for(let i = 0; i < options.length; i++)if (options[i].classList.contains(this.classes.highlighted)) {
-                const prevOption = options[i];
-                prevOption.classList.remove(this.classes.highlighted);
-                const prevParent = prevOption.parentElement;
-                if (prevParent && prevParent.classList.contains(this.classes.open)) {
-                    const optgroupLabel = prevParent.querySelector("." + this.classes.optgroupLabel);
-                    if (optgroupLabel) optgroupLabel.click();
-                }
-                let selectOption = options[dir === "down" ? i + 1 < options.length ? i + 1 : 0 : i - 1 >= 0 ? i - 1 : options.length - 1];
-                selectOption.classList.add(this.classes.highlighted);
-                this.ensureElementInView(this.content.list, selectOption);
-                const selectParent = selectOption.parentElement;
-                if (selectParent && selectParent.classList.contains(this.classes.close)) {
-                    const optgroupLabel = selectParent.querySelector("." + this.classes.optgroupLabel);
-                    if (optgroupLabel) optgroupLabel.click();
-                }
-                return;
-            }
-            options[dir === "down" ? 0 : options.length - 1].classList.add(this.classes.highlighted);
-            this.ensureElementInView(this.content.list, options[dir === "down" ? 0 : options.length - 1]);
-        }
-        listDiv() {
-            const options = document.createElement("div");
-            options.classList.add(this.classes.list);
-            return options;
-        }
-        renderError(error) {
-            this.content.list.innerHTML = "";
-            const errorDiv = document.createElement("div");
-            errorDiv.classList.add(this.classes.error);
-            errorDiv.textContent = error;
-            this.content.list.appendChild(errorDiv);
-        }
-        renderSearching() {
-            this.content.list.innerHTML = "";
-            const searchingDiv = document.createElement("div");
-            searchingDiv.classList.add(this.classes.searching);
-            searchingDiv.textContent = this.settings.searchingText;
-            this.content.list.appendChild(searchingDiv);
-        }
-        renderOptions(data) {
-            this.content.list.innerHTML = "";
-            if (data.length === 0) {
-                const noResults = document.createElement("div");
-                noResults.classList.add(this.classes.search);
-                noResults.innerHTML = this.settings.searchText;
-                this.content.list.appendChild(noResults);
-                return;
-            }
-            for (const d of data){
-                if (d instanceof Optgroup) {
-                    const optgroupEl = document.createElement("div");
-                    optgroupEl.classList.add(this.classes.optgroup);
-                    const optgroupLabel = document.createElement("div");
-                    optgroupLabel.classList.add(this.classes.optgroupLabel);
-                    optgroupEl.appendChild(optgroupLabel);
-                    const optgroupLabelText = document.createElement("div");
-                    optgroupLabelText.classList.add(this.classes.optgroupLabelText);
-                    optgroupLabelText.textContent = d.label;
-                    optgroupLabel.appendChild(optgroupLabelText);
-                    const optgroupActions = document.createElement("div");
-                    optgroupActions.classList.add(this.classes.optgroupActions);
-                    optgroupLabel.appendChild(optgroupActions);
-                    if (this.settings.isMultiple && d.selectAll) {
-                        const selectAll = document.createElement("div");
-                        selectAll.classList.add(this.classes.optgroupSelectAll);
-                        let allSelected = true;
-                        for (const o1 of d.options)if (!o1.selected) {
-                            allSelected = false;
-                            break;
-                        }
-                        if (allSelected) selectAll.classList.add(this.classes.selected);
-                        const selectAllText = document.createElement("span");
-                        selectAllText.textContent = d.selectAllText;
-                        selectAll.appendChild(selectAllText);
-                        const selectAllSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-                        selectAllSvg.setAttribute("viewBox", "0 0 100 100");
-                        selectAll.appendChild(selectAllSvg);
-                        const selectAllBox = document.createElementNS("http://www.w3.org/2000/svg", "path");
-                        selectAllBox.setAttribute("d", this.classes.optgroupSelectAllBox);
-                        selectAllSvg.appendChild(selectAllBox);
-                        const selectAllCheck = document.createElementNS("http://www.w3.org/2000/svg", "path");
-                        selectAllCheck.setAttribute("d", this.classes.optgroupSelectAllCheck);
-                        selectAllSvg.appendChild(selectAllCheck);
-                        selectAll.addEventListener("click", (e)=>{
-                            e.preventDefault();
-                            e.stopPropagation();
-                            const currentSelected = this.store.getSelected();
-                            if (allSelected) {
-                                const newSelected = currentSelected.filter((s)=>{
-                                    for (const o of d.options){
-                                        if (s === o.value) return false;
-                                    }
-                                    return true;
-                                });
-                                this.callbacks.setSelected(newSelected, true);
-                                return;
-                            } else {
-                                const newSelected = currentSelected.concat(d.options.map((o)=>o.value));
-                                for (const o5 of d.options)if (!this.store.getOptionByID(o5.id)) this.callbacks.addOption(o5);
-                                this.callbacks.setSelected(newSelected, true);
-                                return;
-                            }
-                        });
-                        optgroupActions.appendChild(selectAll);
-                    }
-                    if (d.closable !== "off") {
-                        const optgroupClosable = document.createElement("div");
-                        optgroupClosable.classList.add(this.classes.optgroupClosable);
-                        const optgroupClosableSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-                        optgroupClosableSvg.setAttribute("viewBox", "0 0 100 100");
-                        optgroupClosableSvg.classList.add(this.classes.arrow);
-                        optgroupClosable.appendChild(optgroupClosableSvg);
-                        const optgroupClosableArrow = document.createElementNS("http://www.w3.org/2000/svg", "path");
-                        optgroupClosableSvg.appendChild(optgroupClosableArrow);
-                        if (d.options.some((o)=>o.selected) || this.content.search.input.value.trim() !== "") {
-                            optgroupClosable.classList.add(this.classes.open);
-                            optgroupClosableArrow.setAttribute("d", this.classes.arrowOpen);
-                        } else if (d.closable === "open") {
-                            optgroupEl.classList.add(this.classes.open);
-                            optgroupClosableArrow.setAttribute("d", this.classes.arrowOpen);
-                        } else if (d.closable === "close") {
-                            optgroupEl.classList.add(this.classes.close);
-                            optgroupClosableArrow.setAttribute("d", this.classes.arrowClose);
-                        }
-                        optgroupLabel.addEventListener("click", (e)=>{
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (optgroupEl.classList.contains(this.classes.close)) {
-                                optgroupEl.classList.remove(this.classes.close);
-                                optgroupEl.classList.add(this.classes.open);
-                                optgroupClosableArrow.setAttribute("d", this.classes.arrowOpen);
-                            } else {
-                                optgroupEl.classList.remove(this.classes.open);
-                                optgroupEl.classList.add(this.classes.close);
-                                optgroupClosableArrow.setAttribute("d", this.classes.arrowClose);
-                            }
-                        });
-                        optgroupActions.appendChild(optgroupClosable);
-                    }
-                    optgroupEl.appendChild(optgroupLabel);
-                    for (const o2 of d.options)optgroupEl.appendChild(this.option(o2));
-                    this.content.list.appendChild(optgroupEl);
-                }
-                if (d instanceof Option) this.content.list.appendChild(this.option(d));
-            }
-        }
-        option(option) {
-            if (option.placeholder) {
-                const placeholder = document.createElement("div");
-                placeholder.classList.add(this.classes.option);
-                placeholder.classList.add(this.classes.hide);
-                return placeholder;
-            }
-            const optionEl = document.createElement("div");
-            optionEl.dataset.id = option.id;
-            optionEl.id = option.id;
-            optionEl.classList.add(this.classes.option);
-            optionEl.setAttribute("role", "option");
-            if (option.class) option.class.split(" ").forEach((dataClass)=>{
-                optionEl.classList.add(dataClass);
-            });
-            if (option.style) optionEl.style.cssText = option.style;
-            if (this.settings.searchHighlight && this.content.search.input.value.trim() !== "") optionEl.innerHTML = this.highlightText(option.html !== "" ? option.html : option.text, this.content.search.input.value, this.classes.searchHighlighter);
-            else if (option.html !== "") optionEl.innerHTML = option.html;
-            else optionEl.textContent = option.text;
-            if (this.settings.showOptionTooltips && optionEl.textContent) optionEl.setAttribute("title", optionEl.textContent);
-            if (!option.display) optionEl.classList.add(this.classes.hide);
-            if (option.disabled) optionEl.classList.add(this.classes.disabled);
-            if (option.selected && this.settings.hideSelected) optionEl.classList.add(this.classes.hide);
-            if (option.selected) {
-                optionEl.classList.add(this.classes.selected);
-                optionEl.setAttribute("aria-selected", "true");
-                this.main.main.setAttribute("aria-activedescendant", optionEl.id);
-            } else {
-                optionEl.classList.remove(this.classes.selected);
-                optionEl.setAttribute("aria-selected", "false");
-            }
-            optionEl.addEventListener("click", (e)=>{
-                e.preventDefault();
-                e.stopPropagation();
-                const selectedOptions = this.store.getSelected();
-                const element = e.currentTarget;
-                const elementID = String(element.dataset.id);
-                if (option.disabled || option.selected && !this.settings.allowDeselect) return;
-                if (this.settings.isMultiple && this.settings.maxSelected <= selectedOptions.length && !option.selected || this.settings.isMultiple && this.settings.minSelected >= selectedOptions.length && option.selected) return;
-                let shouldUpdate = false;
-                const before = this.store.getSelectedOptions();
-                let after = [];
-                if (this.settings.isMultiple) {
-                    if (option.selected) after = before.filter((o)=>o.id !== elementID);
-                    else after = before.concat(option);
-                }
-                if (!this.settings.isMultiple) {
-                    if (option.selected) after = [];
-                    else after = [
-                        option
-                    ];
-                }
-                if (!this.callbacks.beforeChange) shouldUpdate = true;
-                if (this.callbacks.beforeChange) {
-                    if (this.callbacks.beforeChange(after, before) === false) shouldUpdate = false;
-                    else shouldUpdate = true;
-                }
-                if (shouldUpdate) {
-                    if (!this.store.getOptionByID(elementID)) this.callbacks.addOption(option);
-                    this.callbacks.setSelected(after.map((o)=>o.value), false);
-                    if (this.settings.closeOnSelect) this.callbacks.close();
-                    if (this.callbacks.afterChange) this.callbacks.afterChange(after);
-                }
-            });
-            return optionEl;
-        }
-        destroy() {
-            this.main.main.remove();
-            this.content.main.remove();
-        }
-        highlightText(str, search, className) {
-            let completedString = str;
-            const regex = new RegExp("(" + search.trim() + ")(?![^<]*>[^<>]*</)", "i");
-            if (!str.match(regex)) return str;
-            const matchStartPosition = str.match(regex).index;
-            const matchEndPosition = matchStartPosition + str.match(regex)[0].toString().length;
-            const originalTextFoundByRegex = str.substring(matchStartPosition, matchEndPosition);
-            completedString = completedString.replace(regex, `<mark class="${className}">${originalTextFoundByRegex}</mark>`);
-            return completedString;
-        }
-        moveContentAbove() {
-            const mainHeight = this.main.main.offsetHeight;
-            const contentHeight = this.content.main.offsetHeight;
-            this.main.main.classList.remove(this.classes.openBelow);
-            this.main.main.classList.add(this.classes.openAbove);
-            this.content.main.classList.remove(this.classes.openBelow);
-            this.content.main.classList.add(this.classes.openAbove);
-            const containerRect = this.main.main.getBoundingClientRect();
-            this.content.main.style.margin = "-" + (mainHeight + contentHeight - 1) + "px 0px 0px 0px";
-            this.content.main.style.top = containerRect.top + containerRect.height + window.scrollY + "px";
-            this.content.main.style.left = containerRect.left + window.scrollX + "px";
-            this.content.main.style.width = containerRect.width + "px";
-        }
-        moveContentBelow() {
-            this.main.main.classList.remove(this.classes.openAbove);
-            this.main.main.classList.add(this.classes.openBelow);
-            this.content.main.classList.remove(this.classes.openAbove);
-            this.content.main.classList.add(this.classes.openBelow);
-            const containerRect = this.main.main.getBoundingClientRect();
-            this.content.main.style.margin = "-1px 0px 0px 0px";
-            if (this.settings.contentPosition !== "relative") {
-                this.content.main.style.top = containerRect.top + containerRect.height + window.scrollY + "px";
-                this.content.main.style.left = containerRect.left + window.scrollX + "px";
-                this.content.main.style.width = containerRect.width + "px";
-            }
-        }
-        ensureElementInView(container, element) {
-            const cTop = container.scrollTop + container.offsetTop;
-            const cBottom = cTop + container.clientHeight;
-            const eTop = element.offsetTop;
-            const eBottom = eTop + element.clientHeight;
-            if (eTop < cTop) container.scrollTop -= cTop - eTop;
-            else if (eBottom > cBottom) container.scrollTop += eBottom - cBottom;
-        }
-        putContent() {
-            const mainHeight = this.main.main.offsetHeight;
-            const mainRect = this.main.main.getBoundingClientRect();
-            const contentHeight = this.content.main.offsetHeight;
-            const spaceBelow = window.innerHeight - (mainRect.top + mainHeight);
-            if (spaceBelow <= contentHeight) {
-                if (mainRect.top > contentHeight) return "up";
-                else return "down";
-            }
-            return "down";
-        }
-        updateDeselectAll() {
-            if (!this.store || !this.settings) return;
-            const selected = this.store.getSelectedOptions();
-            const hasSelectedItems = selected && selected.length > 0;
-            const isMultiple = this.settings.isMultiple;
-            const allowDeselect = this.settings.allowDeselect;
-            const deselectButton = this.main.deselect.main;
-            const hideClass = this.classes.hide;
-            if (allowDeselect && !(isMultiple && !hasSelectedItems)) deselectButton.classList.remove(hideClass);
-            else deselectButton.classList.add(hideClass);
-        }
-    }
-    class Select {
-        constructor(select){
-            this.listen = false;
-            this.observer = null;
-            this.select = select;
-            this.valueChange = this.valueChange.bind(this);
-            this.select.addEventListener("change", this.valueChange, {
-                passive: true
-            });
-            this.observer = new MutationObserver(this.observeCall.bind(this));
-            this.changeListen(true);
-        }
-        enable() {
-            this.select.disabled = false;
-        }
-        disable() {
-            this.select.disabled = true;
-        }
-        hideUI() {
-            this.select.tabIndex = -1;
-            this.select.style.display = "none";
-            this.select.setAttribute("aria-hidden", "true");
-        }
-        showUI() {
-            this.select.removeAttribute("tabindex");
-            this.select.style.display = "";
-            this.select.removeAttribute("aria-hidden");
-        }
-        changeListen(listen) {
-            this.listen = listen;
-            if (listen) {
-                if (this.observer) this.observer.observe(this.select, {
-                    subtree: true,
-                    childList: true,
-                    attributes: true
-                });
-            }
-            if (!listen) {
-                if (this.observer) this.observer.disconnect();
-            }
-        }
-        valueChange(ev) {
-            if (this.listen && this.onValueChange) this.onValueChange(this.getSelectedValues());
-            return true;
-        }
-        observeCall(mutations) {
-            if (!this.listen) return;
-            let classChanged = false;
-            let disabledChanged = false;
-            let optgroupOptionChanged = false;
-            for (const m of mutations){
-                if (m.target === this.select) {
-                    if (m.attributeName === "disabled") disabledChanged = true;
-                    if (m.attributeName === "class") classChanged = true;
-                }
-                if (m.target.nodeName === "OPTGROUP" || m.target.nodeName === "OPTION") optgroupOptionChanged = true;
-            }
-            if (classChanged && this.onClassChange) this.onClassChange(this.select.className.split(" "));
-            if (disabledChanged && this.onDisabledChange) {
-                this.changeListen(false);
-                this.onDisabledChange(this.select.disabled);
-                this.changeListen(true);
-            }
-            if (optgroupOptionChanged && this.onOptionsChange) {
-                this.changeListen(false);
-                this.onOptionsChange(this.getData());
-                this.changeListen(true);
-            }
-        }
-        getData() {
-            let data = [];
-            const nodes = this.select.childNodes;
-            for (const n of nodes){
-                if (n.nodeName === "OPTGROUP") data.push(this.getDataFromOptgroup(n));
-                if (n.nodeName === "OPTION") data.push(this.getDataFromOption(n));
-            }
-            return data;
-        }
-        getDataFromOptgroup(optgroup) {
-            let data = {
-                id: optgroup.id,
-                label: optgroup.label,
-                selectAll: optgroup.dataset ? optgroup.dataset.selectall === "true" : false,
-                selectAllText: optgroup.dataset ? optgroup.dataset.selectalltext : "Select all",
-                closable: optgroup.dataset ? optgroup.dataset.closable : "off",
-                options: []
-            };
-            const options = optgroup.childNodes;
-            for (const o of options)if (o.nodeName === "OPTION") data.options.push(this.getDataFromOption(o));
-            return data;
-        }
-        getDataFromOption(option) {
-            return {
-                id: option.id,
-                value: option.value,
-                text: option.text,
-                html: option.dataset && option.dataset.html ? option.dataset.html : "",
-                selected: option.selected,
-                display: option.style.display === "none" ? false : true,
-                disabled: option.disabled,
-                mandatory: option.dataset ? option.dataset.mandatory === "true" : false,
-                placeholder: option.dataset.placeholder === "true",
-                class: option.className,
-                style: option.style.cssText,
-                data: option.dataset
-            };
-        }
-        getSelectedValues() {
-            let values = [];
-            const options = this.select.childNodes;
-            for (const o of options){
-                if (o.nodeName === "OPTGROUP") {
-                    const optgroupOptions = o.childNodes;
-                    for (const oo of optgroupOptions)if (oo.nodeName === "OPTION") {
-                        const option = oo;
-                        if (option.selected) values.push(option.value);
-                    }
-                }
-                if (o.nodeName === "OPTION") {
-                    const option = o;
-                    if (option.selected) values.push(option.value);
-                }
-            }
-            return values;
-        }
-        setSelected(value) {
-            this.changeListen(false);
-            const options = this.select.childNodes;
-            for (const o of options){
-                if (o.nodeName === "OPTGROUP") {
-                    const optgroup = o;
-                    const optgroupOptions = optgroup.childNodes;
-                    for (const oo of optgroupOptions)if (oo.nodeName === "OPTION") {
-                        const option = oo;
-                        option.selected = value.includes(option.value);
-                    }
-                }
-                if (o.nodeName === "OPTION") {
-                    const option = o;
-                    option.selected = value.includes(option.value);
-                }
-            }
-            this.changeListen(true);
-        }
-        updateSelect(id, style, classes) {
-            this.changeListen(false);
-            if (id) this.select.dataset.id = id;
-            if (style) this.select.style.cssText = style;
-            if (classes) {
-                this.select.className = "";
-                classes.forEach((c)=>{
-                    if (c.trim() !== "") this.select.classList.add(c.trim());
-                });
-            }
-            this.changeListen(true);
-        }
-        updateOptions(data) {
-            this.changeListen(false);
-            this.select.innerHTML = "";
-            for (const d of data){
-                if (d instanceof Optgroup) this.select.appendChild(this.createOptgroup(d));
-                if (d instanceof Option) this.select.appendChild(this.createOption(d));
-            }
-            this.select.dispatchEvent(new Event("change"));
-            this.changeListen(true);
-        }
-        createOptgroup(optgroup) {
-            const optgroupEl = document.createElement("optgroup");
-            optgroupEl.id = optgroup.id;
-            optgroupEl.label = optgroup.label;
-            if (optgroup.selectAll) optgroupEl.dataset.selectAll = "true";
-            if (optgroup.closable !== "off") optgroupEl.dataset.closable = optgroup.closable;
-            if (optgroup.options) for (const o of optgroup.options)optgroupEl.appendChild(this.createOption(o));
-            return optgroupEl;
-        }
-        createOption(info) {
-            const optionEl = document.createElement("option");
-            optionEl.id = info.id;
-            optionEl.value = info.value;
-            optionEl.innerHTML = info.text;
-            if (info.html !== "") optionEl.setAttribute("data-html", info.html);
-            if (info.selected) optionEl.selected = info.selected;
-            if (info.disabled) optionEl.disabled = true;
-            if (info.display === false) optionEl.style.display = "none";
-            if (info.placeholder) optionEl.setAttribute("data-placeholder", "true");
-            if (info.mandatory) optionEl.setAttribute("data-mandatory", "true");
-            if (info.class) info.class.split(" ").forEach((optionClass)=>{
-                optionEl.classList.add(optionClass);
-            });
-            if (info.data && typeof info.data === "object") Object.keys(info.data).forEach((key)=>{
-                optionEl.setAttribute("data-" + kebabCase(key), info.data[key]);
-            });
-            return optionEl;
-        }
-        destroy() {
-            this.changeListen(false);
-            this.select.removeEventListener("change", this.valueChange);
-            if (this.observer) {
-                this.observer.disconnect();
-                this.observer = null;
-            }
-            delete this.select.dataset.id;
-            this.showUI();
-        }
-    }
-    class Settings {
-        constructor(settings){
-            this.id = "";
-            this.style = "";
-            this.class = [];
-            this.isMultiple = false;
-            this.isOpen = false;
-            this.isFullOpen = false;
-            this.intervalMove = null;
-            if (!settings) settings = {};
-            this.id = "ss-" + generateID();
-            this.style = settings.style || "";
-            this.class = settings.class || [];
-            this.disabled = settings.disabled !== undefined ? settings.disabled : false;
-            this.alwaysOpen = settings.alwaysOpen !== undefined ? settings.alwaysOpen : false;
-            this.showSearch = settings.showSearch !== undefined ? settings.showSearch : true;
-            this.ariaLabel = settings.ariaLabel || "Combobox";
-            this.searchPlaceholder = settings.searchPlaceholder || "Search";
-            this.searchText = settings.searchText || "No Results";
-            this.searchingText = settings.searchingText || "Searching...";
-            this.searchHighlight = settings.searchHighlight !== undefined ? settings.searchHighlight : false;
-            this.closeOnSelect = settings.closeOnSelect !== undefined ? settings.closeOnSelect : true;
-            this.contentLocation = settings.contentLocation || document.body;
-            this.contentPosition = settings.contentPosition || "absolute";
-            this.openPosition = settings.openPosition || "auto";
-            this.placeholderText = settings.placeholderText !== undefined ? settings.placeholderText : "Select Value";
-            this.allowDeselect = settings.allowDeselect !== undefined ? settings.allowDeselect : false;
-            this.hideSelected = settings.hideSelected !== undefined ? settings.hideSelected : false;
-            this.keepOrder = settings.keepOrder !== undefined ? settings.keepOrder : false;
-            this.showOptionTooltips = settings.showOptionTooltips !== undefined ? settings.showOptionTooltips : false;
-            this.minSelected = settings.minSelected || 0;
-            this.maxSelected = settings.maxSelected || 1000;
-            this.timeoutDelay = settings.timeoutDelay || 200;
-            this.maxValuesShown = settings.maxValuesShown || 20;
-            this.maxValuesMessage = settings.maxValuesMessage || "{number} selected";
-        }
-    }
-    class SlimSelect {
-        constructor(config){
-            var _a;
-            this.events = {
-                search: undefined,
-                searchFilter: (opt, search)=>{
-                    return opt.text.toLowerCase().indexOf(search.toLowerCase()) !== -1;
-                },
-                addable: undefined,
-                beforeChange: undefined,
-                afterChange: undefined,
-                beforeOpen: undefined,
-                afterOpen: undefined,
-                beforeClose: undefined,
-                afterClose: undefined
-            };
-            this.windowResize = debounce(()=>{
-                if (!this.settings.isOpen && !this.settings.isFullOpen) return;
-                this.render.moveContent();
-            });
-            this.windowScroll = debounce(()=>{
-                if (!this.settings.isOpen && !this.settings.isFullOpen) return;
-                this.render.moveContent();
-            });
-            this.documentClick = (e)=>{
-                if (!this.settings.isOpen) return;
-                if (e.target && !hasClassInTree(e.target, this.settings.id)) this.close(e.type);
-            };
-            this.windowVisibilityChange = ()=>{
-                if (document.hidden) this.close();
-            };
-            this.selectEl = typeof config.select === "string" ? document.querySelector(config.select) : config.select;
-            if (!this.selectEl) {
-                if (config.events && config.events.error) config.events.error(new Error("Could not find select element"));
-                return;
-            }
-            if (this.selectEl.tagName !== "SELECT") {
-                if (config.events && config.events.error) config.events.error(new Error("Element isnt of type select"));
-                return;
-            }
-            if (this.selectEl.dataset.ssid) this.destroy();
-            this.settings = new Settings(config.settings);
-            const debounceEvents = [
-                "afterChange",
-                "beforeOpen",
-                "afterOpen",
-                "beforeClose",
-                "afterClose"
-            ];
-            for(const key in config.events){
-                if (!config.events.hasOwnProperty(key)) continue;
-                if (debounceEvents.indexOf(key) !== -1) this.events[key] = debounce(config.events[key], 100);
-                else this.events[key] = config.events[key];
-            }
-            this.settings.disabled = ((_a = config.settings) === null || _a === void 0 ? void 0 : _a.disabled) ? config.settings.disabled : this.selectEl.disabled;
-            this.settings.isMultiple = this.selectEl.multiple;
-            this.settings.style = this.selectEl.style.cssText;
-            this.settings.class = this.selectEl.className.split(" ");
-            this.select = new Select(this.selectEl);
-            this.select.updateSelect(this.settings.id, this.settings.style, this.settings.class);
-            this.select.hideUI();
-            this.select.onValueChange = (values)=>{
-                this.setSelected(values);
-            };
-            this.select.onClassChange = (classes)=>{
-                this.settings.class = classes;
-                this.render.updateClassStyles();
-            };
-            this.select.onDisabledChange = (disabled)=>{
-                if (disabled) this.disable();
-                else this.enable();
-            };
-            this.select.onOptionsChange = (data)=>{
-                this.setData(data);
-            };
-            this.store = new Store(this.settings.isMultiple ? "multiple" : "single", config.data ? config.data : this.select.getData());
-            if (config.data) this.select.updateOptions(this.store.getData());
-            const renderCallbacks = {
-                open: this.open.bind(this),
-                close: this.close.bind(this),
-                addable: this.events.addable ? this.events.addable : undefined,
-                setSelected: this.setSelected.bind(this),
-                addOption: this.addOption.bind(this),
-                search: this.search.bind(this),
-                beforeChange: this.events.beforeChange,
-                afterChange: this.events.afterChange
-            };
-            this.render = new Render(this.settings, this.store, renderCallbacks);
-            this.render.renderValues();
-            this.render.renderOptions(this.store.getData());
-            const selectAriaLabel = this.selectEl.getAttribute("aria-label");
-            const selectAriaLabelledBy = this.selectEl.getAttribute("aria-labelledby");
-            if (selectAriaLabel) this.render.main.main.setAttribute("aria-label", selectAriaLabel);
-            else if (selectAriaLabelledBy) this.render.main.main.setAttribute("aria-labelledby", selectAriaLabelledBy);
-            if (this.selectEl.parentNode) this.selectEl.parentNode.insertBefore(this.render.main.main, this.selectEl.nextSibling);
-            window.addEventListener("resize", this.windowResize, false);
-            if (this.settings.openPosition === "auto") window.addEventListener("scroll", this.windowScroll, false);
-            document.addEventListener("visibilitychange", this.windowVisibilityChange);
-            if (this.settings.disabled) this.disable();
-            if (this.settings.alwaysOpen) this.open();
-            this.selectEl.slim = this;
-        }
-        enable() {
-            this.settings.disabled = false;
-            this.select.enable();
-            this.render.enable();
-        }
-        disable() {
-            this.settings.disabled = true;
-            this.select.disable();
-            this.render.disable();
-        }
-        getData() {
-            return this.store.getData();
-        }
-        setData(data) {
-            const selected = this.store.getSelected();
-            const err = this.store.validateDataArray(data);
-            if (err) {
-                if (this.events.error) this.events.error(err);
-                return;
-            }
-            this.store.setData(data);
-            const dataClean = this.store.getData();
-            this.select.updateOptions(dataClean);
-            this.render.renderValues();
-            this.render.renderOptions(dataClean);
-            if (this.events.afterChange && !isEqual(selected, this.store.getSelected())) this.events.afterChange(this.store.getSelectedOptions());
-        }
-        getSelected() {
-            return this.store.getSelected();
-        }
-        setSelected(value, runAfterChange = true) {
-            const selected = this.store.getSelected();
-            this.store.setSelectedBy("value", Array.isArray(value) ? value : [
-                value
-            ]);
-            const data = this.store.getData();
-            this.select.updateOptions(data);
-            this.render.renderValues();
-            if (this.render.content.search.input.value !== "") this.search(this.render.content.search.input.value);
-            else this.render.renderOptions(data);
-            if (runAfterChange && this.events.afterChange && !isEqual(selected, this.store.getSelected())) this.events.afterChange(this.store.getSelectedOptions());
-        }
-        addOption(option) {
-            const selected = this.store.getSelected();
-            if (!this.store.getDataOptions().some((o)=>{
-                var _a;
-                return o.value === ((_a = option.value) !== null && _a !== void 0 ? _a : option.text);
-            })) this.store.addOption(option);
-            const data = this.store.getData();
-            this.select.updateOptions(data);
-            this.render.renderValues();
-            this.render.renderOptions(data);
-            if (this.events.afterChange && !isEqual(selected, this.store.getSelected())) this.events.afterChange(this.store.getSelectedOptions());
-        }
-        open() {
-            if (this.settings.disabled || this.settings.isOpen) return;
-            if (this.events.beforeOpen) this.events.beforeOpen();
-            this.render.open();
-            if (this.settings.showSearch) this.render.searchFocus();
-            this.settings.isOpen = true;
-            setTimeout(()=>{
-                if (this.events.afterOpen) this.events.afterOpen();
-                if (this.settings.isOpen) this.settings.isFullOpen = true;
-                document.addEventListener("click", this.documentClick);
-            }, this.settings.timeoutDelay);
-            if (this.settings.contentPosition === "absolute") {
-                if (this.settings.intervalMove) clearInterval(this.settings.intervalMove);
-                this.settings.intervalMove = setInterval(this.render.moveContent.bind(this.render), 500);
-            }
-        }
-        close(eventType = null) {
-            if (!this.settings.isOpen || this.settings.alwaysOpen) return;
-            if (this.events.beforeClose) this.events.beforeClose();
-            this.render.close();
-            if (this.render.content.search.input.value !== "") this.search("");
-            this.render.mainFocus(eventType);
-            this.settings.isOpen = false;
-            this.settings.isFullOpen = false;
-            setTimeout(()=>{
-                if (this.events.afterClose) this.events.afterClose();
-                document.removeEventListener("click", this.documentClick);
-            }, this.settings.timeoutDelay);
-            if (this.settings.intervalMove) clearInterval(this.settings.intervalMove);
-        }
-        search(value) {
-            if (this.render.content.search.input.value !== value) this.render.content.search.input.value = value;
-            if (!this.events.search) {
-                this.render.renderOptions(value === "" ? this.store.getData() : this.store.search(value, this.events.searchFilter));
-                return;
-            }
-            this.render.renderSearching();
-            const searchResp = this.events.search(value, this.store.getSelectedOptions());
-            if (searchResp instanceof Promise) {
-                searchResp.then((data)=>{
-                    this.render.renderOptions(this.store.partialToFullData(data));
-                }).catch((err)=>{
-                    this.render.renderError(typeof err === "string" ? err : err.message);
-                });
-                return;
-            } else if (Array.isArray(searchResp)) this.render.renderOptions(this.store.partialToFullData(searchResp));
-            else this.render.renderError("Search event must return a promise or an array of data");
-        }
-        destroy() {
-            document.removeEventListener("click", this.documentClick);
-            window.removeEventListener("resize", this.windowResize, false);
-            if (this.settings.openPosition === "auto") window.removeEventListener("scroll", this.windowScroll, false);
-            document.removeEventListener("visibilitychange", this.windowVisibilityChange);
-            this.store.setData([]);
-            this.render.destroy();
-            this.select.destroy();
-        }
-    }
-    return SlimSelect;
-});
-
-},{}],"eXQLZ":[function(require,module,exports) {
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"eXQLZ":[function(require,module,exports) {
 var global = arguments[3];
 /*
 * Notiflix Notify AIO (https://notiflix.github.io)
@@ -6908,6 +5528,1518 @@ var global = arguments[3];
     };
 });
 
-},{}]},["1RB6v","8lqZg"], "8lqZg", "parcelRequired7c6")
+},{}],"9ydBq":[function(require,module,exports) {
+/*!
+	By André Rinas, www.andrerinas.de
+	Documentation, www.simplelightbox.com
+	Available for use under the MIT License
+	Version 2.14.2
+*/ "use strict";
+var global = arguments[3];
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports["default"] = void 0;
+function _typeof(obj1) {
+    "@babel/helpers - typeof";
+    return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function(obj) {
+        return typeof obj;
+    } : function(obj) {
+        return obj && "function" == typeof Symbol && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
+    }, _typeof(obj1);
+}
+function _createForOfIteratorHelper(o, allowArrayLike) {
+    var it = typeof Symbol !== "undefined" && o[Symbol.iterator] || o["@@iterator"];
+    if (!it) {
+        if (Array.isArray(o) || (it = _unsupportedIterableToArray(o)) || allowArrayLike && o && typeof o.length === "number") {
+            if (it) o = it;
+            var i = 0;
+            var F = function F() {};
+            return {
+                s: F,
+                n: function n() {
+                    if (i >= o.length) return {
+                        done: true
+                    };
+                    return {
+                        done: false,
+                        value: o[i++]
+                    };
+                },
+                e: function e(_e) {
+                    throw _e;
+                },
+                f: F
+            };
+        }
+        throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.");
+    }
+    var normalCompletion = true, didErr = false, err;
+    return {
+        s: function s() {
+            it = it.call(o);
+        },
+        n: function n() {
+            var step = it.next();
+            normalCompletion = step.done;
+            return step;
+        },
+        e: function e(_e2) {
+            didErr = true;
+            err = _e2;
+        },
+        f: function f() {
+            try {
+                if (!normalCompletion && it["return"] != null) it["return"]();
+            } finally{
+                if (didErr) throw err;
+            }
+        }
+    };
+}
+function _toConsumableArray(arr) {
+    return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _unsupportedIterableToArray(arr) || _nonIterableSpread();
+}
+function _nonIterableSpread() {
+    throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.");
+}
+function _unsupportedIterableToArray(o, minLen) {
+    if (!o) return;
+    if (typeof o === "string") return _arrayLikeToArray(o, minLen);
+    var n = Object.prototype.toString.call(o).slice(8, -1);
+    if (n === "Object" && o.constructor) n = o.constructor.name;
+    if (n === "Map" || n === "Set") return Array.from(o);
+    if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen);
+}
+function _iterableToArray(iter) {
+    if (typeof Symbol !== "undefined" && iter[Symbol.iterator] != null || iter["@@iterator"] != null) return Array.from(iter);
+}
+function _arrayWithoutHoles(arr) {
+    if (Array.isArray(arr)) return _arrayLikeToArray(arr);
+}
+function _arrayLikeToArray(arr, len) {
+    if (len == null || len > arr.length) len = arr.length;
+    for(var i = 0, arr2 = new Array(len); i < len; i++)arr2[i] = arr[i];
+    return arr2;
+}
+function _classCallCheck(instance, Constructor) {
+    if (!(instance instanceof Constructor)) throw new TypeError("Cannot call a class as a function");
+}
+function _defineProperties(target, props) {
+    for(var i = 0; i < props.length; i++){
+        var descriptor = props[i];
+        descriptor.enumerable = descriptor.enumerable || false;
+        descriptor.configurable = true;
+        if ("value" in descriptor) descriptor.writable = true;
+        Object.defineProperty(target, descriptor.key, descriptor);
+    }
+}
+function _createClass(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties(Constructor, staticProps);
+    Object.defineProperty(Constructor, "prototype", {
+        writable: false
+    });
+    return Constructor;
+}
+function _defineProperty(obj, key, value) {
+    if (key in obj) Object.defineProperty(obj, key, {
+        value: value,
+        enumerable: true,
+        configurable: true,
+        writable: true
+    });
+    else obj[key] = value;
+    return obj;
+}
+var SimpleLightbox = /*#__PURE__*/ function() {
+    function SimpleLightbox1(elements, options) {
+        var _this = this;
+        _classCallCheck(this, SimpleLightbox1);
+        _defineProperty(this, "defaultOptions", {
+            sourceAttr: "href",
+            overlay: true,
+            overlayOpacity: 0.7,
+            spinner: true,
+            nav: true,
+            navText: [
+                "&lsaquo;",
+                "&rsaquo;"
+            ],
+            captions: true,
+            captionDelay: 0,
+            captionSelector: "img",
+            captionType: "attr",
+            captionsData: "title",
+            captionPosition: "bottom",
+            captionClass: "",
+            captionHTML: true,
+            close: true,
+            closeText: "&times;",
+            swipeClose: true,
+            showCounter: true,
+            fileExt: "png|jpg|jpeg|gif|webp",
+            animationSlide: true,
+            animationSpeed: 250,
+            preloading: true,
+            enableKeyboard: true,
+            loop: true,
+            rel: false,
+            docClose: true,
+            swipeTolerance: 50,
+            className: "simple-lightbox",
+            widthRatio: 0.8,
+            heightRatio: 0.9,
+            scaleImageToRatio: false,
+            disableRightClick: false,
+            disableScroll: true,
+            alertError: true,
+            alertErrorMessage: "Image not found, next image will be loaded",
+            additionalHtml: false,
+            history: true,
+            throttleInterval: 0,
+            doubleTapZoom: 2,
+            maxZoom: 10,
+            htmlClass: "has-lightbox",
+            rtl: false,
+            fixedClass: "sl-fixed",
+            fadeSpeed: 300,
+            uniqueImages: true,
+            focus: true,
+            scrollZoom: true,
+            scrollZoomFactor: 0.5,
+            download: false
+        });
+        _defineProperty(this, "transitionPrefix", void 0);
+        _defineProperty(this, "isPassiveEventsSupported", void 0);
+        _defineProperty(this, "transitionCapable", false);
+        _defineProperty(this, "isTouchDevice", "ontouchstart" in window);
+        _defineProperty(this, "isAppleDevice", /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform));
+        _defineProperty(this, "initialLocationHash", void 0);
+        _defineProperty(this, "pushStateSupport", "pushState" in history);
+        _defineProperty(this, "isOpen", false);
+        _defineProperty(this, "isAnimating", false);
+        _defineProperty(this, "isClosing", false);
+        _defineProperty(this, "isFadeIn", false);
+        _defineProperty(this, "urlChangedOnce", false);
+        _defineProperty(this, "hashReseted", false);
+        _defineProperty(this, "historyHasChanges", false);
+        _defineProperty(this, "historyUpdateTimeout", null);
+        _defineProperty(this, "currentImage", void 0);
+        _defineProperty(this, "eventNamespace", "simplelightbox");
+        _defineProperty(this, "domNodes", {});
+        _defineProperty(this, "loadedImages", []);
+        _defineProperty(this, "initialImageIndex", 0);
+        _defineProperty(this, "currentImageIndex", 0);
+        _defineProperty(this, "initialSelector", null);
+        _defineProperty(this, "globalScrollbarWidth", 0);
+        _defineProperty(this, "controlCoordinates", {
+            swipeDiff: 0,
+            swipeYDiff: 0,
+            swipeStart: 0,
+            swipeEnd: 0,
+            swipeYStart: 0,
+            swipeYEnd: 0,
+            mousedown: false,
+            imageLeft: 0,
+            zoomed: false,
+            containerHeight: 0,
+            containerWidth: 0,
+            containerOffsetX: 0,
+            containerOffsetY: 0,
+            imgHeight: 0,
+            imgWidth: 0,
+            capture: false,
+            initialOffsetX: 0,
+            initialOffsetY: 0,
+            initialPointerOffsetX: 0,
+            initialPointerOffsetY: 0,
+            initialPointerOffsetX2: 0,
+            initialPointerOffsetY2: 0,
+            initialScale: 1,
+            initialPinchDistance: 0,
+            pointerOffsetX: 0,
+            pointerOffsetY: 0,
+            pointerOffsetX2: 0,
+            pointerOffsetY2: 0,
+            targetOffsetX: 0,
+            targetOffsetY: 0,
+            targetScale: 0,
+            pinchOffsetX: 0,
+            pinchOffsetY: 0,
+            limitOffsetX: 0,
+            limitOffsetY: 0,
+            scaleDifference: 0,
+            targetPinchDistance: 0,
+            touchCount: 0,
+            doubleTapped: false,
+            touchmoveCount: 0
+        });
+        this.options = Object.assign(this.defaultOptions, options);
+        this.isPassiveEventsSupported = this.checkPassiveEventsSupport();
+        if (typeof elements === "string") {
+            this.initialSelector = elements;
+            this.elements = Array.from(document.querySelectorAll(elements));
+        } else this.elements = typeof elements.length !== "undefined" && elements.length > 0 ? Array.from(elements) : [
+            elements
+        ];
+        this.relatedElements = [];
+        this.transitionPrefix = this.calculateTransitionPrefix();
+        this.transitionCapable = this.transitionPrefix !== false;
+        this.initialLocationHash = this.hash;
+        // this should be handled by attribute selector IMHO! => 'a[rel=bla]'...
+        if (this.options.rel) this.elements = this.getRelated(this.options.rel);
+        if (this.options.uniqueImages) {
+            var imgArr = [];
+            this.elements = Array.from(this.elements).filter(function(element) {
+                var src = element.getAttribute(_this.options.sourceAttr);
+                if (imgArr.indexOf(src) === -1) {
+                    imgArr.push(src);
+                    return true;
+                }
+                return false;
+            });
+        }
+        this.createDomNodes();
+        if (this.options.close) this.domNodes.wrapper.appendChild(this.domNodes.closeButton);
+        if (this.options.nav) this.domNodes.wrapper.appendChild(this.domNodes.navigation);
+        if (this.options.spinner) this.domNodes.wrapper.appendChild(this.domNodes.spinner);
+        this.addEventListener(this.elements, "click." + this.eventNamespace, function(event) {
+            if (_this.isValidLink(event.currentTarget)) {
+                event.preventDefault();
+                if (_this.isAnimating) return false;
+                _this.initialImageIndex = _this.elements.indexOf(event.currentTarget);
+                _this.openImage(event.currentTarget);
+            }
+        });
+        // close addEventListener click addEventListener doc
+        if (this.options.docClose) this.addEventListener(this.domNodes.wrapper, [
+            "click." + this.eventNamespace,
+            "touchstart." + this.eventNamespace
+        ], function(event) {
+            if (_this.isOpen && event.target === event.currentTarget) _this.close();
+        });
+        // disable rightclick
+        if (this.options.disableRightClick) this.addEventListener(document.body, "contextmenu." + this.eventNamespace, function(event) {
+            if (event.target.parentElement.classList.contains("sl-image")) event.preventDefault();
+        });
+        // keyboard-control
+        if (this.options.enableKeyboard) this.addEventListener(document.body, "keyup." + this.eventNamespace, this.throttle(function(event) {
+            _this.controlCoordinates.swipeDiff = 0;
+            // keyboard control only if lightbox is open
+            if (_this.isAnimating && event.key === "Escape") {
+                _this.currentImage.setAttribute("src", "");
+                _this.isAnimating = false;
+                _this.close();
+                return;
+            }
+            if (_this.isOpen) {
+                event.preventDefault();
+                if (event.key === "Escape") _this.close();
+                if (!_this.isAnimating && [
+                    "ArrowLeft",
+                    "ArrowRight"
+                ].indexOf(event.key) > -1) _this.loadImage(event.key === "ArrowRight" ? 1 : -1);
+            }
+        }, this.options.throttleInterval));
+        this.addEvents();
+    }
+    _createClass(SimpleLightbox1, [
+        {
+            key: "checkPassiveEventsSupport",
+            value: function checkPassiveEventsSupport() {
+                // https://github.com/WICG/EventListenerOptions/blob/gh-pages/explainer.md#feature-detection
+                // Test via a getter in the options object to see if the passive property is accessed
+                var supportsPassive = false;
+                try {
+                    var opts = Object.defineProperty({}, "passive", {
+                        get: function get() {
+                            supportsPassive = true;
+                        }
+                    });
+                    window.addEventListener("testPassive", null, opts);
+                    window.removeEventListener("testPassive", null, opts);
+                } catch (e) {}
+                return supportsPassive;
+            }
+        },
+        {
+            key: "getCaptionElement",
+            value: function getCaptionElement(elem) {
+                // look at sibling selector
+                if (this.options.captionSelector.startsWith("+")) {
+                    var selector = this.options.captionSelector.replace(/^\+/, "").trimStart();
+                    var sibling = elem.nextElementSibling;
+                    if (sibling && sibling.matches(selector)) return sibling;
+                    return false;
+                } else if (this.options.captionSelector.startsWith(">")) {
+                    var _selector = this.options.captionSelector.replace(/^>/, "").trimStart();
+                    return elem.querySelector(_selector);
+                } else return elem.querySelector(this.options.captionSelector);
+            }
+        },
+        {
+            key: "generateQuerySelector",
+            value: function generateQuerySelector(elem) {
+                var tagName = elem.tagName, id = elem.id, className = elem.className, parentNode = elem.parentNode;
+                if (tagName === "HTML") return "HTML";
+                var str = tagName;
+                str += id !== "" ? "#".concat(id) : "";
+                if (className) {
+                    var classes = className.trim().split(/\s/);
+                    for(var i = 0; i < classes.length; i++)str += ".".concat(classes[i]);
+                }
+                var childIndex = 1;
+                for(var e = elem; e.previousElementSibling; e = e.previousElementSibling)childIndex += 1;
+                str += ":nth-child(".concat(childIndex, ")");
+                return "".concat(this.generateQuerySelector(parentNode), " > ").concat(str);
+            }
+        },
+        {
+            key: "createDomNodes",
+            value: function createDomNodes() {
+                this.domNodes.overlay = document.createElement("div");
+                this.domNodes.overlay.classList.add("sl-overlay");
+                this.domNodes.overlay.dataset.opacityTarget = this.options.overlayOpacity;
+                this.domNodes.closeButton = document.createElement("button");
+                this.domNodes.closeButton.classList.add("sl-close");
+                this.domNodes.closeButton.innerHTML = this.options.closeText;
+                this.domNodes.spinner = document.createElement("div");
+                this.domNodes.spinner.classList.add("sl-spinner");
+                this.domNodes.spinner.innerHTML = "<div></div>";
+                this.domNodes.navigation = document.createElement("div");
+                this.domNodes.navigation.classList.add("sl-navigation");
+                this.domNodes.navigation.innerHTML = '<button class="sl-prev">'.concat(this.options.navText[0], '</button><button class="sl-next">').concat(this.options.navText[1], "</button>");
+                this.domNodes.counter = document.createElement("div");
+                this.domNodes.counter.classList.add("sl-counter");
+                this.domNodes.counter.innerHTML = '<span class="sl-current"></span>/<span class="sl-total"></span>';
+                this.domNodes.download = document.createElement("div");
+                this.domNodes.download.classList.add("sl-download");
+                this.domNodes.downloadLink = document.createElement("a");
+                this.domNodes.downloadLink.setAttribute("download", "");
+                this.domNodes.downloadLink.textContent = this.options.download;
+                this.domNodes.download.appendChild(this.domNodes.downloadLink);
+                this.domNodes.caption = document.createElement("div");
+                this.domNodes.caption.classList.add("sl-caption", "pos-" + this.options.captionPosition);
+                if (this.options.captionClass) {
+                    var _this$domNodes$captio;
+                    var captionClasses = this.options.captionClass.split(/[\s,]+/);
+                    (_this$domNodes$captio = this.domNodes.caption.classList).add.apply(_this$domNodes$captio, _toConsumableArray(captionClasses));
+                }
+                this.domNodes.image = document.createElement("div");
+                this.domNodes.image.classList.add("sl-image");
+                this.domNodes.wrapper = document.createElement("div");
+                this.domNodes.wrapper.classList.add("sl-wrapper");
+                this.domNodes.wrapper.setAttribute("tabindex", -1);
+                this.domNodes.wrapper.setAttribute("role", "dialog");
+                this.domNodes.wrapper.setAttribute("aria-hidden", false);
+                if (this.options.className) this.domNodes.wrapper.classList.add(this.options.className);
+                if (this.options.rtl) this.domNodes.wrapper.classList.add("sl-dir-rtl");
+            }
+        },
+        {
+            key: "throttle",
+            value: function throttle(func, limit) {
+                var inThrottle;
+                return function() {
+                    if (!inThrottle) {
+                        func.apply(this, arguments);
+                        inThrottle = true;
+                        setTimeout(function() {
+                            return inThrottle = false;
+                        }, limit);
+                    }
+                };
+            }
+        },
+        {
+            key: "isValidLink",
+            value: function isValidLink(element) {
+                return !this.options.fileExt || element.getAttribute(this.options.sourceAttr) && new RegExp("(" + this.options.fileExt + ")($|\\?.*$)", "i").test(element.getAttribute(this.options.sourceAttr));
+            }
+        },
+        {
+            key: "calculateTransitionPrefix",
+            value: function calculateTransitionPrefix() {
+                var s = (document.body || document.documentElement).style;
+                return "transition" in s ? "" : "WebkitTransition" in s ? "-webkit-" : "MozTransition" in s ? "-moz-" : "OTransition" in s ? "-o" : false;
+            }
+        },
+        {
+            key: "getScrollbarWidth",
+            value: function getScrollbarWidth() {
+                var scrollbarWidth = 0;
+                var scrollDiv = document.createElement("div");
+                scrollDiv.classList.add("sl-scrollbar-measure");
+                document.body.appendChild(scrollDiv);
+                scrollbarWidth = scrollDiv.offsetWidth - scrollDiv.clientWidth;
+                document.body.removeChild(scrollDiv);
+                return scrollbarWidth;
+            }
+        },
+        {
+            key: "toggleScrollbar",
+            value: function toggleScrollbar(type) {
+                var scrollbarWidth = 0;
+                var fixedElements = [].slice.call(document.querySelectorAll("." + this.options.fixedClass));
+                if (type === "hide") {
+                    var fullWindowWidth = window.innerWidth;
+                    if (!fullWindowWidth) {
+                        var documentElementRect = document.documentElement.getBoundingClientRect();
+                        fullWindowWidth = documentElementRect.right - Math.abs(documentElementRect.left);
+                    }
+                    if (document.body.clientWidth < fullWindowWidth || this.isAppleDevice) {
+                        var paddingRight = parseInt(window.getComputedStyle(document.body).paddingRight || 0, 10);
+                        scrollbarWidth = this.getScrollbarWidth();
+                        document.body.dataset.originalPaddingRight = paddingRight;
+                        if (scrollbarWidth > 0 || scrollbarWidth == 0 && this.isAppleDevice) {
+                            document.body.classList.add("hidden-scroll");
+                            document.body.style.paddingRight = paddingRight + scrollbarWidth + "px";
+                            fixedElements.forEach(function(element) {
+                                var actualPadding = element.style.paddingRight;
+                                var calculatedPadding = window.getComputedStyle(element)["padding-right"];
+                                element.dataset.originalPaddingRight = actualPadding;
+                                element.style.paddingRight = "".concat(parseFloat(calculatedPadding) + scrollbarWidth, "px");
+                            });
+                        }
+                    }
+                } else {
+                    document.body.classList.remove("hidden-scroll");
+                    document.body.style.paddingRight = document.body.dataset.originalPaddingRight + "px";
+                    fixedElements.forEach(function(element) {
+                        var padding = element.dataset.originalPaddingRight;
+                        if (typeof padding !== "undefined") element.style.paddingRight = padding;
+                    });
+                }
+                return scrollbarWidth;
+            }
+        },
+        {
+            key: "close",
+            value: function close() {
+                var _this2 = this;
+                if (!this.isOpen || this.isAnimating || this.isClosing) return false;
+                this.isClosing = true;
+                var element = this.relatedElements[this.currentImageIndex];
+                element.dispatchEvent(new Event("close.simplelightbox"));
+                if (this.options.history) {
+                    this.historyHasChanges = false;
+                    if (!this.hashReseted) this.resetHash();
+                }
+                this.removeEventListener(document, "focusin." + this.eventNamespace);
+                this.fadeOut(this.domNodes.overlay, this.options.fadeSpeed);
+                this.fadeOut(document.querySelectorAll(".sl-image img,  .sl-close, .sl-navigation, .sl-image .sl-caption, .sl-counter"), this.options.fadeSpeed, function() {
+                    if (_this2.options.disableScroll) _this2.toggleScrollbar("show");
+                    if (_this2.options.htmlClass && _this2.options.htmlClass !== "") document.querySelector("html").classList.remove(_this2.options.htmlClass);
+                    document.body.removeChild(_this2.domNodes.wrapper);
+                    if (_this2.options.overlay) document.body.removeChild(_this2.domNodes.overlay);
+                    _this2.domNodes.additionalHtml = null;
+                    _this2.domNodes.download = null;
+                    element.dispatchEvent(new Event("closed.simplelightbox"));
+                    _this2.isClosing = false;
+                });
+                this.currentImage = null;
+                this.isOpen = false;
+                this.isAnimating = false;
+                // reset touchcontrol coordinates
+                for(var key in this.controlCoordinates)this.controlCoordinates[key] = 0;
+                this.controlCoordinates.mousedown = false;
+                this.controlCoordinates.zoomed = false;
+                this.controlCoordinates.capture = false;
+                this.controlCoordinates.initialScale = this.minMax(1, 1, this.options.maxZoom);
+                this.controlCoordinates.doubleTapped = false;
+            }
+        },
+        {
+            key: "hash",
+            get: function get() {
+                return window.location.hash.substring(1);
+            }
+        },
+        {
+            key: "preload",
+            value: function preload() {
+                var _this3 = this;
+                var index = this.currentImageIndex, length = this.relatedElements.length, next = index + 1 < 0 ? length - 1 : index + 1 >= length - 1 ? 0 : index + 1, prev = index - 1 < 0 ? length - 1 : index - 1 >= length - 1 ? 0 : index - 1, nextImage = new Image(), prevImage = new Image();
+                nextImage.addEventListener("load", function(event) {
+                    var src = event.target.getAttribute("src");
+                    if (_this3.loadedImages.indexOf(src) === -1) //is this condition even required... setting multiple times will not change usage...
+                    _this3.loadedImages.push(src);
+                    _this3.relatedElements[index].dispatchEvent(new Event("nextImageLoaded." + _this3.eventNamespace));
+                });
+                nextImage.setAttribute("src", this.relatedElements[next].getAttribute(this.options.sourceAttr));
+                prevImage.addEventListener("load", function(event) {
+                    var src = event.target.getAttribute("src");
+                    if (_this3.loadedImages.indexOf(src) === -1) _this3.loadedImages.push(src);
+                    _this3.relatedElements[index].dispatchEvent(new Event("prevImageLoaded." + _this3.eventNamespace));
+                });
+                prevImage.setAttribute("src", this.relatedElements[prev].getAttribute(this.options.sourceAttr));
+            }
+        },
+        {
+            key: "loadImage",
+            value: function loadImage(direction) {
+                var _this4 = this;
+                var slideDirection = direction;
+                if (this.options.rtl) direction = -direction;
+                this.relatedElements[this.currentImageIndex].dispatchEvent(new Event("change." + this.eventNamespace));
+                this.relatedElements[this.currentImageIndex].dispatchEvent(new Event((direction === 1 ? "next" : "prev") + "." + this.eventNamespace));
+                var newIndex = this.currentImageIndex + direction;
+                if (this.isAnimating || (newIndex < 0 || newIndex >= this.relatedElements.length) && this.options.loop === false) return false;
+                this.currentImageIndex = newIndex < 0 ? this.relatedElements.length - 1 : newIndex > this.relatedElements.length - 1 ? 0 : newIndex;
+                this.domNodes.counter.querySelector(".sl-current").innerHTML = this.currentImageIndex + 1;
+                if (this.options.animationSlide) this.slide(this.options.animationSpeed / 1000, -100 * slideDirection - this.controlCoordinates.swipeDiff + "px");
+                this.fadeOut(this.domNodes.image, this.options.fadeSpeed, function() {
+                    _this4.isAnimating = true;
+                    if (!_this4.isClosing) setTimeout(function() {
+                        var element = _this4.relatedElements[_this4.currentImageIndex];
+                        if (!_this4.currentImage) return;
+                        _this4.currentImage.setAttribute("src", element.getAttribute(_this4.options.sourceAttr));
+                        if (_this4.loadedImages.indexOf(element.getAttribute(_this4.options.sourceAttr)) === -1) _this4.show(_this4.domNodes.spinner);
+                        if (_this4.domNodes.image.contains(_this4.domNodes.caption)) _this4.domNodes.image.removeChild(_this4.domNodes.caption);
+                        _this4.adjustImage(slideDirection);
+                        if (_this4.options.preloading) _this4.preload();
+                    }, 100);
+                    else _this4.isAnimating = false;
+                });
+            }
+        },
+        {
+            key: "adjustImage",
+            value: function adjustImage(direction) {
+                var _this5 = this;
+                if (!this.currentImage) return false;
+                var tmpImage = new Image(), windowWidth = window.innerWidth * this.options.widthRatio, windowHeight = window.innerHeight * this.options.heightRatio;
+                tmpImage.setAttribute("src", this.currentImage.getAttribute("src"));
+                this.currentImage.dataset.scale = 1;
+                this.currentImage.dataset.translateX = 0;
+                this.currentImage.dataset.translateY = 0;
+                this.zoomPanElement(0, 0, 1);
+                tmpImage.addEventListener("error", function(event) {
+                    _this5.relatedElements[_this5.currentImageIndex].dispatchEvent(new Event("error." + _this5.eventNamespace));
+                    _this5.isAnimating = false;
+                    _this5.isOpen = true;
+                    _this5.domNodes.spinner.style.display = "none";
+                    var dirIsDefined = direction === 1 || direction === -1;
+                    if (_this5.initialImageIndex === _this5.currentImageIndex && dirIsDefined) return _this5.close();
+                    if (_this5.options.alertError) alert(_this5.options.alertErrorMessage);
+                    _this5.loadImage(dirIsDefined ? direction : 1);
+                });
+                tmpImage.addEventListener("load", function(event) {
+                    if (typeof direction !== "undefined") {
+                        _this5.relatedElements[_this5.currentImageIndex].dispatchEvent(new Event("changed." + _this5.eventNamespace));
+                        _this5.relatedElements[_this5.currentImageIndex].dispatchEvent(new Event((direction === 1 ? "nextDone" : "prevDone") + "." + _this5.eventNamespace));
+                    }
+                    // history
+                    if (_this5.options.history) _this5.updateURL();
+                    if (_this5.loadedImages.indexOf(_this5.currentImage.getAttribute("src")) === -1) _this5.loadedImages.push(_this5.currentImage.getAttribute("src"));
+                    var imageWidth = event.target.width, imageHeight = event.target.height;
+                    if (_this5.options.scaleImageToRatio || imageWidth > windowWidth || imageHeight > windowHeight) {
+                        var ratio = imageWidth / imageHeight > windowWidth / windowHeight ? imageWidth / windowWidth : imageHeight / windowHeight;
+                        imageWidth /= ratio;
+                        imageHeight /= ratio;
+                    }
+                    _this5.domNodes.image.style.top = (window.innerHeight - imageHeight) / 2 + "px";
+                    _this5.domNodes.image.style.left = (window.innerWidth - imageWidth - _this5.globalScrollbarWidth) / 2 + "px";
+                    _this5.domNodes.image.style.width = imageWidth + "px";
+                    _this5.domNodes.image.style.height = imageHeight + "px";
+                    _this5.domNodes.spinner.style.display = "none";
+                    if (_this5.options.focus) _this5.forceFocus();
+                    _this5.fadeIn(_this5.currentImage, _this5.options.fadeSpeed, function() {
+                        if (_this5.options.focus) _this5.domNodes.wrapper.focus();
+                    });
+                    _this5.isOpen = true;
+                    var captionContainer, captionText;
+                    if (typeof _this5.options.captionSelector === "string") captionContainer = _this5.options.captionSelector === "self" ? _this5.relatedElements[_this5.currentImageIndex] : _this5.getCaptionElement(_this5.relatedElements[_this5.currentImageIndex]);
+                    else if (typeof _this5.options.captionSelector === "function") captionContainer = _this5.options.captionSelector(_this5.relatedElements[_this5.currentImageIndex]);
+                    if (_this5.options.captions && captionContainer) {
+                        if (_this5.options.captionType === "data") captionText = captionContainer.dataset[_this5.options.captionsData];
+                        else if (_this5.options.captionType === "text") captionText = captionContainer.innerHTML;
+                        else captionText = captionContainer.getAttribute(_this5.options.captionsData);
+                    }
+                    if (!_this5.options.loop) {
+                        if (_this5.currentImageIndex === 0) _this5.hide(_this5.domNodes.navigation.querySelector(".sl-prev"));
+                        if (_this5.currentImageIndex >= _this5.relatedElements.length - 1) _this5.hide(_this5.domNodes.navigation.querySelector(".sl-next"));
+                        if (_this5.currentImageIndex > 0) _this5.show(_this5.domNodes.navigation.querySelector(".sl-prev"));
+                        if (_this5.currentImageIndex < _this5.relatedElements.length - 1) _this5.show(_this5.domNodes.navigation.querySelector(".sl-next"));
+                    } else if (_this5.relatedElements.length === 1) _this5.hide(_this5.domNodes.navigation.querySelectorAll(".sl-prev, .sl-next"));
+                    else _this5.show(_this5.domNodes.navigation.querySelectorAll(".sl-prev, .sl-next"));
+                    if (direction === 1 || direction === -1) {
+                        if (_this5.options.animationSlide) {
+                            _this5.slide(0, 100 * direction + "px");
+                            setTimeout(function() {
+                                _this5.slide(_this5.options.animationSpeed / 1000, "0px");
+                            }, 50);
+                        }
+                        _this5.fadeIn(_this5.domNodes.image, _this5.options.fadeSpeed, function() {
+                            _this5.isAnimating = false;
+                            _this5.setCaption(captionText, imageWidth);
+                        });
+                    } else {
+                        _this5.isAnimating = false;
+                        _this5.setCaption(captionText, imageWidth);
+                    }
+                    if (_this5.options.additionalHtml && !_this5.domNodes.additionalHtml) {
+                        _this5.domNodes.additionalHtml = document.createElement("div");
+                        _this5.domNodes.additionalHtml.classList.add("sl-additional-html");
+                        _this5.domNodes.additionalHtml.innerHTML = _this5.options.additionalHtml;
+                        _this5.domNodes.image.appendChild(_this5.domNodes.additionalHtml);
+                    }
+                    if (_this5.options.download) _this5.domNodes.downloadLink.setAttribute("href", _this5.currentImage.getAttribute("src"));
+                });
+            }
+        },
+        {
+            key: "zoomPanElement",
+            value: function zoomPanElement(targetOffsetX, targetOffsetY, targetScale) {
+                this.currentImage.style[this.transitionPrefix + "transform"] = "translate(" + targetOffsetX + "," + targetOffsetY + ") scale(" + targetScale + ")";
+            }
+        },
+        {
+            key: "minMax",
+            value: function minMax(value, min, max) {
+                return value < min ? min : value > max ? max : value;
+            }
+        },
+        {
+            key: "setZoomData",
+            value: function setZoomData(initialScale, targetOffsetX, targetOffsetY) {
+                this.currentImage.dataset.scale = initialScale;
+                this.currentImage.dataset.translateX = targetOffsetX;
+                this.currentImage.dataset.translateY = targetOffsetY;
+            }
+        },
+        {
+            key: "hashchangeHandler",
+            value: function hashchangeHandler() {
+                if (this.isOpen && this.hash === this.initialLocationHash) {
+                    this.hashReseted = true;
+                    this.close();
+                }
+            }
+        },
+        {
+            key: "addEvents",
+            value: function addEvents() {
+                var _this6 = this;
+                // resize/responsive
+                this.addEventListener(window, "resize." + this.eventNamespace, function(event) {
+                    //this.adjustImage.bind(this)
+                    if (_this6.isOpen) _this6.adjustImage();
+                });
+                this.addEventListener(this.domNodes.closeButton, [
+                    "click." + this.eventNamespace,
+                    "touchstart." + this.eventNamespace
+                ], this.close.bind(this));
+                if (this.options.history) setTimeout(function() {
+                    _this6.addEventListener(window, "hashchange." + _this6.eventNamespace, function(event) {
+                        if (_this6.isOpen) _this6.hashchangeHandler();
+                    });
+                }, 40);
+                this.addEventListener(this.domNodes.navigation.getElementsByTagName("button"), "click." + this.eventNamespace, function(event) {
+                    if (!event.currentTarget.tagName.match(/button/i)) return true;
+                    event.preventDefault();
+                    _this6.controlCoordinates.swipeDiff = 0;
+                    _this6.loadImage(event.currentTarget.classList.contains("sl-next") ? 1 : -1);
+                });
+                if (this.options.scrollZoom) {
+                    var scale = 1;
+                    this.addEventListener(this.domNodes.image, [
+                        "mousewheel",
+                        "DOMMouseScroll"
+                    ], function(event) {
+                        if (_this6.controlCoordinates.mousedown || _this6.isAnimating || _this6.isClosing || !_this6.isOpen) return true;
+                        if (_this6.controlCoordinates.containerHeight == 0) {
+                            _this6.controlCoordinates.containerHeight = _this6.getDimensions(_this6.domNodes.image).height;
+                            _this6.controlCoordinates.containerWidth = _this6.getDimensions(_this6.domNodes.image).width;
+                            _this6.controlCoordinates.imgHeight = _this6.getDimensions(_this6.currentImage).height;
+                            _this6.controlCoordinates.imgWidth = _this6.getDimensions(_this6.currentImage).width;
+                            _this6.controlCoordinates.containerOffsetX = _this6.domNodes.image.offsetLeft;
+                            _this6.controlCoordinates.containerOffsetY = _this6.domNodes.image.offsetTop;
+                            _this6.controlCoordinates.initialOffsetX = parseFloat(_this6.currentImage.dataset.translateX);
+                            _this6.controlCoordinates.initialOffsetY = parseFloat(_this6.currentImage.dataset.translateY);
+                        }
+                        // event.preventDefault();
+                        var delta = event.delta || event.wheelDelta;
+                        if (delta === undefined) //we are on firefox
+                        delta = event.detail;
+                        delta = Math.max(-1, Math.min(1, delta)); // cap the delta to [-1,1] for cross browser consistency
+                        // apply zoom
+                        scale += delta * _this6.options.scrollZoomFactor * scale;
+                        scale = Math.max(1, Math.min(_this6.options.maxZoom, scale));
+                        _this6.controlCoordinates.targetScale = scale;
+                        var scrollTopPos = document.documentElement.scrollTop || document.body.scrollTop;
+                        _this6.controlCoordinates.pinchOffsetX = event.pageX;
+                        _this6.controlCoordinates.pinchOffsetY = event.pageY - scrollTopPos || 0; // need to substract the scroll position
+                        _this6.controlCoordinates.limitOffsetX = (_this6.controlCoordinates.imgWidth * _this6.controlCoordinates.targetScale - _this6.controlCoordinates.containerWidth) / 2;
+                        _this6.controlCoordinates.limitOffsetY = (_this6.controlCoordinates.imgHeight * _this6.controlCoordinates.targetScale - _this6.controlCoordinates.containerHeight) / 2;
+                        _this6.controlCoordinates.scaleDifference = _this6.controlCoordinates.targetScale - _this6.controlCoordinates.initialScale;
+                        _this6.controlCoordinates.targetOffsetX = _this6.controlCoordinates.imgWidth * _this6.controlCoordinates.targetScale <= _this6.controlCoordinates.containerWidth ? 0 : _this6.minMax(_this6.controlCoordinates.initialOffsetX - (_this6.controlCoordinates.pinchOffsetX - _this6.controlCoordinates.containerOffsetX - _this6.controlCoordinates.containerWidth / 2 - _this6.controlCoordinates.initialOffsetX) / (_this6.controlCoordinates.targetScale - _this6.controlCoordinates.scaleDifference) * _this6.controlCoordinates.scaleDifference, _this6.controlCoordinates.limitOffsetX * -1, _this6.controlCoordinates.limitOffsetX);
+                        _this6.controlCoordinates.targetOffsetY = _this6.controlCoordinates.imgHeight * _this6.controlCoordinates.targetScale <= _this6.controlCoordinates.containerHeight ? 0 : _this6.minMax(_this6.controlCoordinates.initialOffsetY - (_this6.controlCoordinates.pinchOffsetY - _this6.controlCoordinates.containerOffsetY - _this6.controlCoordinates.containerHeight / 2 - _this6.controlCoordinates.initialOffsetY) / (_this6.controlCoordinates.targetScale - _this6.controlCoordinates.scaleDifference) * _this6.controlCoordinates.scaleDifference, _this6.controlCoordinates.limitOffsetY * -1, _this6.controlCoordinates.limitOffsetY);
+                        _this6.zoomPanElement(_this6.controlCoordinates.targetOffsetX + "px", _this6.controlCoordinates.targetOffsetY + "px", _this6.controlCoordinates.targetScale);
+                        if (_this6.controlCoordinates.targetScale > 1) {
+                            _this6.controlCoordinates.zoomed = true;
+                            if ((!_this6.domNodes.caption.style.opacity || _this6.domNodes.caption.style.opacity > 0) && _this6.domNodes.caption.style.display !== "none") _this6.fadeOut(_this6.domNodes.caption, _this6.options.fadeSpeed);
+                        } else {
+                            if (_this6.controlCoordinates.initialScale === 1) {
+                                _this6.controlCoordinates.zoomed = false;
+                                if (_this6.domNodes.caption.style.display === "none") _this6.fadeIn(_this6.domNodes.caption, _this6.options.fadeSpeed);
+                            }
+                            _this6.controlCoordinates.initialPinchDistance = null;
+                            _this6.controlCoordinates.capture = false;
+                        }
+                        _this6.controlCoordinates.initialPinchDistance = _this6.controlCoordinates.targetPinchDistance;
+                        _this6.controlCoordinates.initialScale = _this6.controlCoordinates.targetScale;
+                        _this6.controlCoordinates.initialOffsetX = _this6.controlCoordinates.targetOffsetX;
+                        _this6.controlCoordinates.initialOffsetY = _this6.controlCoordinates.targetOffsetY;
+                        _this6.setZoomData(_this6.controlCoordinates.targetScale, _this6.controlCoordinates.targetOffsetX, _this6.controlCoordinates.targetOffsetY);
+                        _this6.zoomPanElement(_this6.controlCoordinates.targetOffsetX + "px", _this6.controlCoordinates.targetOffsetY + "px", _this6.controlCoordinates.targetScale);
+                    });
+                }
+                this.addEventListener(this.domNodes.image, [
+                    "touchstart." + this.eventNamespace,
+                    "mousedown." + this.eventNamespace
+                ], function(event) {
+                    if (event.target.tagName === "A" && event.type === "touchstart") return true;
+                    if (event.type === "mousedown") {
+                        event.preventDefault();
+                        _this6.controlCoordinates.initialPointerOffsetX = event.clientX;
+                        _this6.controlCoordinates.initialPointerOffsetY = event.clientY;
+                        _this6.controlCoordinates.containerHeight = _this6.getDimensions(_this6.domNodes.image).height;
+                        _this6.controlCoordinates.containerWidth = _this6.getDimensions(_this6.domNodes.image).width;
+                        _this6.controlCoordinates.imgHeight = _this6.getDimensions(_this6.currentImage).height;
+                        _this6.controlCoordinates.imgWidth = _this6.getDimensions(_this6.currentImage).width;
+                        _this6.controlCoordinates.containerOffsetX = _this6.domNodes.image.offsetLeft;
+                        _this6.controlCoordinates.containerOffsetY = _this6.domNodes.image.offsetTop;
+                        _this6.controlCoordinates.initialOffsetX = parseFloat(_this6.currentImage.dataset.translateX);
+                        _this6.controlCoordinates.initialOffsetY = parseFloat(_this6.currentImage.dataset.translateY);
+                        _this6.controlCoordinates.capture = true;
+                    } else {
+                        _this6.controlCoordinates.touchCount = event.touches.length;
+                        _this6.controlCoordinates.initialPointerOffsetX = event.touches[0].clientX;
+                        _this6.controlCoordinates.initialPointerOffsetY = event.touches[0].clientY;
+                        _this6.controlCoordinates.containerHeight = _this6.getDimensions(_this6.domNodes.image).height;
+                        _this6.controlCoordinates.containerWidth = _this6.getDimensions(_this6.domNodes.image).width;
+                        _this6.controlCoordinates.imgHeight = _this6.getDimensions(_this6.currentImage).height;
+                        _this6.controlCoordinates.imgWidth = _this6.getDimensions(_this6.currentImage).width;
+                        _this6.controlCoordinates.containerOffsetX = _this6.domNodes.image.offsetLeft;
+                        _this6.controlCoordinates.containerOffsetY = _this6.domNodes.image.offsetTop;
+                        if (_this6.controlCoordinates.touchCount === 1) /* Single touch */ {
+                            if (!_this6.controlCoordinates.doubleTapped) {
+                                _this6.controlCoordinates.doubleTapped = true;
+                                setTimeout(function() {
+                                    _this6.controlCoordinates.doubleTapped = false;
+                                }, 300);
+                            } else {
+                                _this6.currentImage.classList.add("sl-transition");
+                                if (!_this6.controlCoordinates.zoomed) {
+                                    _this6.controlCoordinates.initialScale = _this6.options.doubleTapZoom;
+                                    _this6.setZoomData(_this6.controlCoordinates.initialScale, 0, 0);
+                                    _this6.zoomPanElement("0px", "0px", _this6.controlCoordinates.initialScale);
+                                    if ((!_this6.domNodes.caption.style.opacity || _this6.domNodes.caption.style.opacity > 0) && _this6.domNodes.caption.style.display !== "none") _this6.fadeOut(_this6.domNodes.caption, _this6.options.fadeSpeed);
+                                    _this6.controlCoordinates.zoomed = true;
+                                } else {
+                                    _this6.controlCoordinates.initialScale = 1;
+                                    _this6.setZoomData(_this6.controlCoordinates.initialScale, 0, 0);
+                                    _this6.zoomPanElement("0px", "0px", _this6.controlCoordinates.initialScale);
+                                    _this6.controlCoordinates.zoomed = false;
+                                }
+                                setTimeout(function() {
+                                    if (_this6.currentImage) _this6.currentImage.classList.remove("sl-transition");
+                                }, 200);
+                                return false;
+                            }
+                            _this6.controlCoordinates.initialOffsetX = parseFloat(_this6.currentImage.dataset.translateX);
+                            _this6.controlCoordinates.initialOffsetY = parseFloat(_this6.currentImage.dataset.translateY);
+                        } else if (_this6.controlCoordinates.touchCount === 2) /* Pinch */ {
+                            _this6.controlCoordinates.initialPointerOffsetX2 = event.touches[1].clientX;
+                            _this6.controlCoordinates.initialPointerOffsetY2 = event.touches[1].clientY;
+                            _this6.controlCoordinates.initialOffsetX = parseFloat(_this6.currentImage.dataset.translateX);
+                            _this6.controlCoordinates.initialOffsetY = parseFloat(_this6.currentImage.dataset.translateY);
+                            _this6.controlCoordinates.pinchOffsetX = (_this6.controlCoordinates.initialPointerOffsetX + _this6.controlCoordinates.initialPointerOffsetX2) / 2;
+                            _this6.controlCoordinates.pinchOffsetY = (_this6.controlCoordinates.initialPointerOffsetY + _this6.controlCoordinates.initialPointerOffsetY2) / 2;
+                            _this6.controlCoordinates.initialPinchDistance = Math.sqrt((_this6.controlCoordinates.initialPointerOffsetX - _this6.controlCoordinates.initialPointerOffsetX2) * (_this6.controlCoordinates.initialPointerOffsetX - _this6.controlCoordinates.initialPointerOffsetX2) + (_this6.controlCoordinates.initialPointerOffsetY - _this6.controlCoordinates.initialPointerOffsetY2) * (_this6.controlCoordinates.initialPointerOffsetY - _this6.controlCoordinates.initialPointerOffsetY2));
+                        }
+                        _this6.controlCoordinates.capture = true;
+                    }
+                    if (_this6.controlCoordinates.mousedown) return true;
+                    if (_this6.transitionCapable) _this6.controlCoordinates.imageLeft = parseInt(_this6.domNodes.image.style.left, 10);
+                    _this6.controlCoordinates.mousedown = true;
+                    _this6.controlCoordinates.swipeDiff = 0;
+                    _this6.controlCoordinates.swipeYDiff = 0;
+                    _this6.controlCoordinates.swipeStart = event.pageX || event.touches[0].pageX;
+                    _this6.controlCoordinates.swipeYStart = event.pageY || event.touches[0].pageY;
+                    return false;
+                });
+                this.addEventListener(this.domNodes.image, [
+                    "touchmove." + this.eventNamespace,
+                    "mousemove." + this.eventNamespace,
+                    "MSPointerMove"
+                ], function(event) {
+                    if (!_this6.controlCoordinates.mousedown) return true;
+                    if (event.type === "touchmove") {
+                        if (_this6.controlCoordinates.capture === false) return false;
+                        _this6.controlCoordinates.pointerOffsetX = event.touches[0].clientX;
+                        _this6.controlCoordinates.pointerOffsetY = event.touches[0].clientY;
+                        _this6.controlCoordinates.touchCount = event.touches.length;
+                        _this6.controlCoordinates.touchmoveCount++;
+                        if (_this6.controlCoordinates.touchCount > 1) /* Pinch */ {
+                            _this6.controlCoordinates.pointerOffsetX2 = event.touches[1].clientX;
+                            _this6.controlCoordinates.pointerOffsetY2 = event.touches[1].clientY;
+                            _this6.controlCoordinates.targetPinchDistance = Math.sqrt((_this6.controlCoordinates.pointerOffsetX - _this6.controlCoordinates.pointerOffsetX2) * (_this6.controlCoordinates.pointerOffsetX - _this6.controlCoordinates.pointerOffsetX2) + (_this6.controlCoordinates.pointerOffsetY - _this6.controlCoordinates.pointerOffsetY2) * (_this6.controlCoordinates.pointerOffsetY - _this6.controlCoordinates.pointerOffsetY2));
+                            if (_this6.controlCoordinates.initialPinchDistance === null) _this6.controlCoordinates.initialPinchDistance = _this6.controlCoordinates.targetPinchDistance;
+                            if (Math.abs(_this6.controlCoordinates.initialPinchDistance - _this6.controlCoordinates.targetPinchDistance) >= 1) {
+                                /* Initialize helpers */ _this6.controlCoordinates.targetScale = _this6.minMax(_this6.controlCoordinates.targetPinchDistance / _this6.controlCoordinates.initialPinchDistance * _this6.controlCoordinates.initialScale, 1, _this6.options.maxZoom);
+                                _this6.controlCoordinates.limitOffsetX = (_this6.controlCoordinates.imgWidth * _this6.controlCoordinates.targetScale - _this6.controlCoordinates.containerWidth) / 2;
+                                _this6.controlCoordinates.limitOffsetY = (_this6.controlCoordinates.imgHeight * _this6.controlCoordinates.targetScale - _this6.controlCoordinates.containerHeight) / 2;
+                                _this6.controlCoordinates.scaleDifference = _this6.controlCoordinates.targetScale - _this6.controlCoordinates.initialScale;
+                                _this6.controlCoordinates.targetOffsetX = _this6.controlCoordinates.imgWidth * _this6.controlCoordinates.targetScale <= _this6.controlCoordinates.containerWidth ? 0 : _this6.minMax(_this6.controlCoordinates.initialOffsetX - (_this6.controlCoordinates.pinchOffsetX - _this6.controlCoordinates.containerOffsetX - _this6.controlCoordinates.containerWidth / 2 - _this6.controlCoordinates.initialOffsetX) / (_this6.controlCoordinates.targetScale - _this6.controlCoordinates.scaleDifference) * _this6.controlCoordinates.scaleDifference, _this6.controlCoordinates.limitOffsetX * -1, _this6.controlCoordinates.limitOffsetX);
+                                _this6.controlCoordinates.targetOffsetY = _this6.controlCoordinates.imgHeight * _this6.controlCoordinates.targetScale <= _this6.controlCoordinates.containerHeight ? 0 : _this6.minMax(_this6.controlCoordinates.initialOffsetY - (_this6.controlCoordinates.pinchOffsetY - _this6.controlCoordinates.containerOffsetY - _this6.controlCoordinates.containerHeight / 2 - _this6.controlCoordinates.initialOffsetY) / (_this6.controlCoordinates.targetScale - _this6.controlCoordinates.scaleDifference) * _this6.controlCoordinates.scaleDifference, _this6.controlCoordinates.limitOffsetY * -1, _this6.controlCoordinates.limitOffsetY);
+                                _this6.zoomPanElement(_this6.controlCoordinates.targetOffsetX + "px", _this6.controlCoordinates.targetOffsetY + "px", _this6.controlCoordinates.targetScale);
+                                if (_this6.controlCoordinates.targetScale > 1) {
+                                    _this6.controlCoordinates.zoomed = true;
+                                    if ((!_this6.domNodes.caption.style.opacity || _this6.domNodes.caption.style.opacity > 0) && _this6.domNodes.caption.style.display !== "none") _this6.fadeOut(_this6.domNodes.caption, _this6.options.fadeSpeed);
+                                }
+                                _this6.controlCoordinates.initialPinchDistance = _this6.controlCoordinates.targetPinchDistance;
+                                _this6.controlCoordinates.initialScale = _this6.controlCoordinates.targetScale;
+                                _this6.controlCoordinates.initialOffsetX = _this6.controlCoordinates.targetOffsetX;
+                                _this6.controlCoordinates.initialOffsetY = _this6.controlCoordinates.targetOffsetY;
+                            }
+                        } else {
+                            _this6.controlCoordinates.targetScale = _this6.controlCoordinates.initialScale;
+                            _this6.controlCoordinates.limitOffsetX = (_this6.controlCoordinates.imgWidth * _this6.controlCoordinates.targetScale - _this6.controlCoordinates.containerWidth) / 2;
+                            _this6.controlCoordinates.limitOffsetY = (_this6.controlCoordinates.imgHeight * _this6.controlCoordinates.targetScale - _this6.controlCoordinates.containerHeight) / 2;
+                            _this6.controlCoordinates.targetOffsetX = _this6.controlCoordinates.imgWidth * _this6.controlCoordinates.targetScale <= _this6.controlCoordinates.containerWidth ? 0 : _this6.minMax(_this6.controlCoordinates.pointerOffsetX - (_this6.controlCoordinates.initialPointerOffsetX - _this6.controlCoordinates.initialOffsetX), _this6.controlCoordinates.limitOffsetX * -1, _this6.controlCoordinates.limitOffsetX);
+                            _this6.controlCoordinates.targetOffsetY = _this6.controlCoordinates.imgHeight * _this6.controlCoordinates.targetScale <= _this6.controlCoordinates.containerHeight ? 0 : _this6.minMax(_this6.controlCoordinates.pointerOffsetY - (_this6.controlCoordinates.initialPointerOffsetY - _this6.controlCoordinates.initialOffsetY), _this6.controlCoordinates.limitOffsetY * -1, _this6.controlCoordinates.limitOffsetY);
+                            if (Math.abs(_this6.controlCoordinates.targetOffsetX) === Math.abs(_this6.controlCoordinates.limitOffsetX)) {
+                                _this6.controlCoordinates.initialOffsetX = _this6.controlCoordinates.targetOffsetX;
+                                _this6.controlCoordinates.initialPointerOffsetX = _this6.controlCoordinates.pointerOffsetX;
+                            }
+                            if (Math.abs(_this6.controlCoordinates.targetOffsetY) === Math.abs(_this6.controlCoordinates.limitOffsetY)) {
+                                _this6.controlCoordinates.initialOffsetY = _this6.controlCoordinates.targetOffsetY;
+                                _this6.controlCoordinates.initialPointerOffsetY = _this6.controlCoordinates.pointerOffsetY;
+                            }
+                            _this6.setZoomData(_this6.controlCoordinates.initialScale, _this6.controlCoordinates.targetOffsetX, _this6.controlCoordinates.targetOffsetY);
+                            _this6.zoomPanElement(_this6.controlCoordinates.targetOffsetX + "px", _this6.controlCoordinates.targetOffsetY + "px", _this6.controlCoordinates.targetScale);
+                        }
+                    }
+                    /* Mouse Move implementation */ if (event.type === "mousemove" && _this6.controlCoordinates.mousedown) {
+                        if (event.type == "touchmove") return true;
+                        event.preventDefault();
+                        if (_this6.controlCoordinates.capture === false) return false;
+                        _this6.controlCoordinates.pointerOffsetX = event.clientX;
+                        _this6.controlCoordinates.pointerOffsetY = event.clientY;
+                        _this6.controlCoordinates.targetScale = _this6.controlCoordinates.initialScale;
+                        _this6.controlCoordinates.limitOffsetX = (_this6.controlCoordinates.imgWidth * _this6.controlCoordinates.targetScale - _this6.controlCoordinates.containerWidth) / 2;
+                        _this6.controlCoordinates.limitOffsetY = (_this6.controlCoordinates.imgHeight * _this6.controlCoordinates.targetScale - _this6.controlCoordinates.containerHeight) / 2;
+                        _this6.controlCoordinates.targetOffsetX = _this6.controlCoordinates.imgWidth * _this6.controlCoordinates.targetScale <= _this6.controlCoordinates.containerWidth ? 0 : _this6.minMax(_this6.controlCoordinates.pointerOffsetX - (_this6.controlCoordinates.initialPointerOffsetX - _this6.controlCoordinates.initialOffsetX), _this6.controlCoordinates.limitOffsetX * -1, _this6.controlCoordinates.limitOffsetX);
+                        _this6.controlCoordinates.targetOffsetY = _this6.controlCoordinates.imgHeight * _this6.controlCoordinates.targetScale <= _this6.controlCoordinates.containerHeight ? 0 : _this6.minMax(_this6.controlCoordinates.pointerOffsetY - (_this6.controlCoordinates.initialPointerOffsetY - _this6.controlCoordinates.initialOffsetY), _this6.controlCoordinates.limitOffsetY * -1, _this6.controlCoordinates.limitOffsetY);
+                        if (Math.abs(_this6.controlCoordinates.targetOffsetX) === Math.abs(_this6.controlCoordinates.limitOffsetX)) {
+                            _this6.controlCoordinates.initialOffsetX = _this6.controlCoordinates.targetOffsetX;
+                            _this6.controlCoordinates.initialPointerOffsetX = _this6.controlCoordinates.pointerOffsetX;
+                        }
+                        if (Math.abs(_this6.controlCoordinates.targetOffsetY) === Math.abs(_this6.controlCoordinates.limitOffsetY)) {
+                            _this6.controlCoordinates.initialOffsetY = _this6.controlCoordinates.targetOffsetY;
+                            _this6.controlCoordinates.initialPointerOffsetY = _this6.controlCoordinates.pointerOffsetY;
+                        }
+                        _this6.setZoomData(_this6.controlCoordinates.initialScale, _this6.controlCoordinates.targetOffsetX, _this6.controlCoordinates.targetOffsetY);
+                        _this6.zoomPanElement(_this6.controlCoordinates.targetOffsetX + "px", _this6.controlCoordinates.targetOffsetY + "px", _this6.controlCoordinates.targetScale);
+                    }
+                    if (!_this6.controlCoordinates.zoomed) {
+                        _this6.controlCoordinates.swipeEnd = event.pageX || event.touches[0].pageX;
+                        _this6.controlCoordinates.swipeYEnd = event.pageY || event.touches[0].pageY;
+                        _this6.controlCoordinates.swipeDiff = _this6.controlCoordinates.swipeStart - _this6.controlCoordinates.swipeEnd;
+                        _this6.controlCoordinates.swipeYDiff = _this6.controlCoordinates.swipeYStart - _this6.controlCoordinates.swipeYEnd;
+                        if (_this6.options.animationSlide) _this6.slide(0, -_this6.controlCoordinates.swipeDiff + "px");
+                    }
+                });
+                this.addEventListener(this.domNodes.image, [
+                    "touchend." + this.eventNamespace,
+                    "mouseup." + this.eventNamespace,
+                    "touchcancel." + this.eventNamespace,
+                    "mouseleave." + this.eventNamespace,
+                    "pointerup",
+                    "pointercancel",
+                    "MSPointerUp",
+                    "MSPointerCancel"
+                ], function(event) {
+                    if (_this6.isTouchDevice && event.type === "touchend") {
+                        _this6.controlCoordinates.touchCount = event.touches.length;
+                        if (_this6.controlCoordinates.touchCount === 0) /* No touch */ {
+                            /* Set attributes */ if (_this6.currentImage) _this6.setZoomData(_this6.controlCoordinates.initialScale, _this6.controlCoordinates.targetOffsetX, _this6.controlCoordinates.targetOffsetY);
+                            if (_this6.controlCoordinates.initialScale === 1) {
+                                _this6.controlCoordinates.zoomed = false;
+                                if (_this6.domNodes.caption.style.display === "none") _this6.fadeIn(_this6.domNodes.caption, _this6.options.fadeSpeed);
+                            }
+                            _this6.controlCoordinates.initialPinchDistance = null;
+                            _this6.controlCoordinates.capture = false;
+                        } else if (_this6.controlCoordinates.touchCount === 1) /* Single touch */ {
+                            _this6.controlCoordinates.initialPointerOffsetX = event.touches[0].clientX;
+                            _this6.controlCoordinates.initialPointerOffsetY = event.touches[0].clientY;
+                        } else if (_this6.controlCoordinates.touchCount > 1) _this6.controlCoordinates.initialPinchDistance = null;
+                    }
+                    if (_this6.controlCoordinates.mousedown) {
+                        _this6.controlCoordinates.mousedown = false;
+                        var possibleDir = true;
+                        if (!_this6.options.loop) {
+                            if (_this6.currentImageIndex === 0 && _this6.controlCoordinates.swipeDiff < 0) possibleDir = false;
+                            if (_this6.currentImageIndex >= _this6.relatedElements.length - 1 && _this6.controlCoordinates.swipeDiff > 0) possibleDir = false;
+                        }
+                        if (Math.abs(_this6.controlCoordinates.swipeDiff) > _this6.options.swipeTolerance && possibleDir) _this6.loadImage(_this6.controlCoordinates.swipeDiff > 0 ? 1 : -1);
+                        else if (_this6.options.animationSlide) _this6.slide(_this6.options.animationSpeed / 1000, "0px");
+                        if (_this6.options.swipeClose && Math.abs(_this6.controlCoordinates.swipeYDiff) > 50 && Math.abs(_this6.controlCoordinates.swipeDiff) < _this6.options.swipeTolerance) _this6.close();
+                    }
+                });
+                this.addEventListener(this.domNodes.image, [
+                    "dblclick"
+                ], function(event) {
+                    if (_this6.isTouchDevice) return;
+                    _this6.controlCoordinates.initialPointerOffsetX = event.clientX;
+                    _this6.controlCoordinates.initialPointerOffsetY = event.clientY;
+                    _this6.controlCoordinates.containerHeight = _this6.getDimensions(_this6.domNodes.image).height;
+                    _this6.controlCoordinates.containerWidth = _this6.getDimensions(_this6.domNodes.image).width;
+                    _this6.controlCoordinates.imgHeight = _this6.getDimensions(_this6.currentImage).height;
+                    _this6.controlCoordinates.imgWidth = _this6.getDimensions(_this6.currentImage).width;
+                    _this6.controlCoordinates.containerOffsetX = _this6.domNodes.image.offsetLeft;
+                    _this6.controlCoordinates.containerOffsetY = _this6.domNodes.image.offsetTop;
+                    _this6.currentImage.classList.add("sl-transition");
+                    if (!_this6.controlCoordinates.zoomed) {
+                        _this6.controlCoordinates.initialScale = _this6.options.doubleTapZoom;
+                        _this6.setZoomData(_this6.controlCoordinates.initialScale, 0, 0);
+                        _this6.zoomPanElement("0px", "0px", _this6.controlCoordinates.initialScale);
+                        if ((!_this6.domNodes.caption.style.opacity || _this6.domNodes.caption.style.opacity > 0) && _this6.domNodes.caption.style.display !== "none") _this6.fadeOut(_this6.domNodes.caption, _this6.options.fadeSpeed);
+                        _this6.controlCoordinates.zoomed = true;
+                    } else {
+                        _this6.controlCoordinates.initialScale = 1;
+                        _this6.setZoomData(_this6.controlCoordinates.initialScale, 0, 0);
+                        _this6.zoomPanElement("0px", "0px", _this6.controlCoordinates.initialScale);
+                        _this6.controlCoordinates.zoomed = false;
+                        if (_this6.domNodes.caption.style.display === "none") _this6.fadeIn(_this6.domNodes.caption, _this6.options.fadeSpeed);
+                    }
+                    setTimeout(function() {
+                        if (_this6.currentImage) {
+                            _this6.currentImage.classList.remove("sl-transition");
+                            _this6.currentImage.style[_this6.transitionPrefix + "transform-origin"] = null;
+                        }
+                    }, 200);
+                    _this6.controlCoordinates.capture = true;
+                    return false;
+                });
+            }
+        },
+        {
+            key: "getDimensions",
+            value: function getDimensions(element) {
+                var styles = window.getComputedStyle(element), height = element.offsetHeight, width = element.offsetWidth, borderTopWidth = parseFloat(styles.borderTopWidth), borderBottomWidth = parseFloat(styles.borderBottomWidth), paddingTop = parseFloat(styles.paddingTop), paddingBottom = parseFloat(styles.paddingBottom), borderLeftWidth = parseFloat(styles.borderLeftWidth), borderRightWidth = parseFloat(styles.borderRightWidth), paddingLeft = parseFloat(styles.paddingLeft), paddingRight = parseFloat(styles.paddingRight);
+                return {
+                    height: height - borderBottomWidth - borderTopWidth - paddingTop - paddingBottom,
+                    width: width - borderLeftWidth - borderRightWidth - paddingLeft - paddingRight
+                };
+            }
+        },
+        {
+            key: "updateHash",
+            value: function updateHash() {
+                var newHash = "pid=" + (this.currentImageIndex + 1), newURL = window.location.href.split("#")[0] + "#" + newHash;
+                this.hashReseted = false;
+                if (this.pushStateSupport) window.history[this.historyHasChanges ? "replaceState" : "pushState"]("", document.title, newURL);
+                else // what is the browser target of this?
+                if (this.historyHasChanges) window.location.replace(newURL);
+                else window.location.hash = newHash;
+                if (!this.historyHasChanges) this.urlChangedOnce = true;
+                this.historyHasChanges = true;
+            }
+        },
+        {
+            key: "resetHash",
+            value: function resetHash() {
+                this.hashReseted = true;
+                if (this.urlChangedOnce) history.back();
+                else if (this.pushStateSupport) history.pushState("", document.title, window.location.pathname + window.location.search);
+                else window.location.hash = "";
+                //
+                //in case an history operation is still pending
+                clearTimeout(this.historyUpdateTimeout);
+            }
+        },
+        {
+            key: "updateURL",
+            value: function updateURL() {
+                clearTimeout(this.historyUpdateTimeout);
+                if (!this.historyHasChanges) this.updateHash(); // first time
+                else this.historyUpdateTimeout = setTimeout(this.updateHash.bind(this), 800);
+            }
+        },
+        {
+            key: "setCaption",
+            value: function setCaption(captionText, imageWidth, allowHTML) {
+                var _this7 = this;
+                if (this.options.captions && captionText && captionText !== "" && typeof captionText !== "undefined") {
+                    var _ref;
+                    var property = ((_ref = allowHTML !== null && allowHTML !== void 0 ? allowHTML : this.options.captionHTML) !== null && _ref !== void 0 ? _ref : true) ? "innerHTML" : "innerText";
+                    this.hide(this.domNodes.caption);
+                    this.domNodes.caption.style.width = imageWidth + "px";
+                    this.domNodes.caption[property] = captionText;
+                    this.domNodes.image.appendChild(this.domNodes.caption);
+                    setTimeout(function() {
+                        _this7.fadeIn(_this7.domNodes.caption, _this7.options.fadeSpeed);
+                    }, this.options.captionDelay);
+                }
+            }
+        },
+        {
+            key: "slide",
+            value: function slide(speed, pos) {
+                if (!this.transitionCapable) return this.domNodes.image.style.left = pos;
+                this.domNodes.image.style[this.transitionPrefix + "transform"] = "translateX(" + pos + ")";
+                this.domNodes.image.style[this.transitionPrefix + "transition"] = this.transitionPrefix + "transform " + speed + "s linear";
+            }
+        },
+        {
+            key: "getRelated",
+            value: function getRelated(rel) {
+                var elems;
+                if (rel && rel !== false && rel !== "nofollow") elems = Array.from(this.elements).filter(function(element) {
+                    return element.getAttribute("rel") === rel;
+                });
+                else elems = this.elements;
+                return elems;
+            }
+        },
+        {
+            key: "openImage",
+            value: function openImage(element) {
+                var _this8 = this;
+                element.dispatchEvent(new Event("show." + this.eventNamespace));
+                this.globalScrollbarWidth = this.getScrollbarWidth();
+                if (this.options.disableScroll) {
+                    this.toggleScrollbar("hide");
+                    this.globalScrollbarWidth = 0;
+                }
+                if (this.options.htmlClass && this.options.htmlClass !== "") document.querySelector("html").classList.add(this.options.htmlClass);
+                document.body.appendChild(this.domNodes.wrapper);
+                this.domNodes.wrapper.appendChild(this.domNodes.image);
+                if (this.options.overlay) document.body.appendChild(this.domNodes.overlay);
+                this.relatedElements = this.getRelated(element.rel);
+                if (this.options.showCounter) {
+                    if (this.relatedElements.length == 1 && this.domNodes.wrapper.contains(this.domNodes.counter)) this.domNodes.wrapper.removeChild(this.domNodes.counter);
+                    else if (this.relatedElements.length > 1 && !this.domNodes.wrapper.contains(this.domNodes.counter)) this.domNodes.wrapper.appendChild(this.domNodes.counter);
+                }
+                if (this.options.download && this.domNodes.download) this.domNodes.wrapper.appendChild(this.domNodes.download);
+                this.isAnimating = true;
+                this.currentImageIndex = this.relatedElements.indexOf(element);
+                var targetURL = element.getAttribute(this.options.sourceAttr);
+                this.currentImage = document.createElement("img");
+                this.currentImage.style.display = "none";
+                this.currentImage.setAttribute("src", targetURL);
+                this.currentImage.dataset.scale = 1;
+                this.currentImage.dataset.translateX = 0;
+                this.currentImage.dataset.translateY = 0;
+                if (this.loadedImages.indexOf(targetURL) === -1) this.loadedImages.push(targetURL);
+                this.domNodes.image.innerHTML = "";
+                this.domNodes.image.setAttribute("style", "");
+                this.domNodes.image.appendChild(this.currentImage);
+                this.fadeIn(this.domNodes.overlay, this.options.fadeSpeed);
+                this.fadeIn([
+                    this.domNodes.counter,
+                    this.domNodes.navigation,
+                    this.domNodes.closeButton,
+                    this.domNodes.download
+                ], this.options.fadeSpeed);
+                this.show(this.domNodes.spinner);
+                this.domNodes.counter.querySelector(".sl-current").innerHTML = this.currentImageIndex + 1;
+                this.domNodes.counter.querySelector(".sl-total").innerHTML = this.relatedElements.length;
+                this.adjustImage();
+                if (this.options.preloading) this.preload();
+                setTimeout(function() {
+                    element.dispatchEvent(new Event("shown." + _this8.eventNamespace));
+                }, this.options.animationSpeed);
+            }
+        },
+        {
+            key: "forceFocus",
+            value: function forceFocus() {
+                var _this9 = this;
+                this.removeEventListener(document, "focusin." + this.eventNamespace);
+                this.addEventListener(document, "focusin." + this.eventNamespace, function(event) {
+                    if (document !== event.target && _this9.domNodes.wrapper !== event.target && !_this9.domNodes.wrapper.contains(event.target)) _this9.domNodes.wrapper.focus();
+                });
+            }
+        },
+        {
+            key: "addEventListener",
+            value: function addEventListener(elements, events, callback, opts) {
+                elements = this.wrap(elements);
+                events = this.wrap(events);
+                var _iterator = _createForOfIteratorHelper(elements), _step;
+                try {
+                    for(_iterator.s(); !(_step = _iterator.n()).done;){
+                        var element = _step.value;
+                        if (!element.namespaces) element.namespaces = {};
+                         // save the namespaces addEventListener the DOM element itself
+                        var _iterator2 = _createForOfIteratorHelper(events), _step2;
+                        try {
+                            for(_iterator2.s(); !(_step2 = _iterator2.n()).done;){
+                                var event = _step2.value;
+                                var options = opts || false;
+                                var needsPassiveFix = [
+                                    "touchstart",
+                                    "touchmove",
+                                    "mousewheel",
+                                    "DOMMouseScroll"
+                                ].indexOf(event.split(".")[0]) >= 0;
+                                if (needsPassiveFix && this.isPassiveEventsSupported) {
+                                    if (_typeof(options) === "object") options.passive = true;
+                                    else options = {
+                                        passive: true
+                                    };
+                                }
+                                element.namespaces[event] = callback;
+                                element.addEventListener(event.split(".")[0], callback, options);
+                            }
+                        } catch (err) {
+                            _iterator2.e(err);
+                        } finally{
+                            _iterator2.f();
+                        }
+                    }
+                } catch (err) {
+                    _iterator.e(err);
+                } finally{
+                    _iterator.f();
+                }
+            }
+        },
+        {
+            key: "removeEventListener",
+            value: function removeEventListener(elements, events) {
+                elements = this.wrap(elements);
+                events = this.wrap(events);
+                var _iterator3 = _createForOfIteratorHelper(elements), _step3;
+                try {
+                    for(_iterator3.s(); !(_step3 = _iterator3.n()).done;){
+                        var element = _step3.value;
+                        var _iterator4 = _createForOfIteratorHelper(events), _step4;
+                        try {
+                            for(_iterator4.s(); !(_step4 = _iterator4.n()).done;){
+                                var event = _step4.value;
+                                if (element.namespaces && element.namespaces[event]) {
+                                    element.removeEventListener(event.split(".")[0], element.namespaces[event]);
+                                    delete element.namespaces[event];
+                                }
+                            }
+                        } catch (err) {
+                            _iterator4.e(err);
+                        } finally{
+                            _iterator4.f();
+                        }
+                    }
+                } catch (err) {
+                    _iterator3.e(err);
+                } finally{
+                    _iterator3.f();
+                }
+            }
+        },
+        {
+            key: "fadeOut",
+            value: function fadeOut(elements, duration, callback) {
+                var _this10 = this;
+                elements = this.wrap(elements);
+                var _iterator5 = _createForOfIteratorHelper(elements), _step5;
+                try {
+                    for(_iterator5.s(); !(_step5 = _iterator5.n()).done;){
+                        var element = _step5.value;
+                        element.style.opacity = parseFloat(element) || window.getComputedStyle(element).getPropertyValue("opacity");
+                    }
+                } catch (err1) {
+                    _iterator5.e(err1);
+                } finally{
+                    _iterator5.f();
+                }
+                this.isFadeIn = false;
+                var step = 16.66666 / (duration || this.options.fadeSpeed), fade1 = function fade() {
+                    var currentOpacity = parseFloat(elements[0].style.opacity);
+                    if ((currentOpacity -= step) < 0) {
+                        var _iterator6 = _createForOfIteratorHelper(elements), _step6;
+                        try {
+                            for(_iterator6.s(); !(_step6 = _iterator6.n()).done;){
+                                var element = _step6.value;
+                                element.style.display = "none";
+                                // element.style.opacity = '';
+                                element.style.opacity = 1;
+                            }
+                        } catch (err) {
+                            _iterator6.e(err);
+                        } finally{
+                            _iterator6.f();
+                        }
+                        callback && callback.call(_this10, elements);
+                    } else {
+                        var _iterator7 = _createForOfIteratorHelper(elements), _step7;
+                        try {
+                            for(_iterator7.s(); !(_step7 = _iterator7.n()).done;){
+                                var _element = _step7.value;
+                                _element.style.opacity = currentOpacity;
+                            }
+                        } catch (err) {
+                            _iterator7.e(err);
+                        } finally{
+                            _iterator7.f();
+                        }
+                        requestAnimationFrame(fade);
+                    }
+                };
+                fade1();
+            }
+        },
+        {
+            key: "fadeIn",
+            value: function fadeIn(elements, duration, callback, display) {
+                var _this11 = this;
+                elements = this.wrap(elements);
+                var _iterator8 = _createForOfIteratorHelper(elements), _step8;
+                try {
+                    for(_iterator8.s(); !(_step8 = _iterator8.n()).done;){
+                        var element = _step8.value;
+                        if (element) {
+                            element.style.opacity = 0;
+                            element.style.display = display || "block";
+                        }
+                    }
+                } catch (err2) {
+                    _iterator8.e(err2);
+                } finally{
+                    _iterator8.f();
+                }
+                this.isFadeIn = true;
+                var opacityTarget = parseFloat(elements[0].dataset.opacityTarget || 1), step = 16.66666 * opacityTarget / (duration || this.options.fadeSpeed), fade2 = function fade() {
+                    var currentOpacity = parseFloat(elements[0].style.opacity);
+                    if (!((currentOpacity += step) > opacityTarget)) {
+                        var _iterator9 = _createForOfIteratorHelper(elements), _step9;
+                        try {
+                            for(_iterator9.s(); !(_step9 = _iterator9.n()).done;){
+                                var element = _step9.value;
+                                if (element) element.style.opacity = currentOpacity;
+                            }
+                        } catch (err) {
+                            _iterator9.e(err);
+                        } finally{
+                            _iterator9.f();
+                        }
+                        if (!_this11.isFadeIn) return;
+                        requestAnimationFrame(fade);
+                    } else {
+                        var _iterator10 = _createForOfIteratorHelper(elements), _step10;
+                        try {
+                            for(_iterator10.s(); !(_step10 = _iterator10.n()).done;){
+                                var _element2 = _step10.value;
+                                if (_element2) _element2.style.opacity = opacityTarget;
+                            }
+                        } catch (err) {
+                            _iterator10.e(err);
+                        } finally{
+                            _iterator10.f();
+                        }
+                        callback && callback.call(_this11, elements);
+                    }
+                };
+                fade2();
+            }
+        },
+        {
+            key: "hide",
+            value: function hide(elements) {
+                elements = this.wrap(elements);
+                var _iterator11 = _createForOfIteratorHelper(elements), _step11;
+                try {
+                    for(_iterator11.s(); !(_step11 = _iterator11.n()).done;){
+                        var element = _step11.value;
+                        if (element.style.display != "none") element.dataset.initialDisplay = element.style.display;
+                        element.style.display = "none";
+                    }
+                } catch (err) {
+                    _iterator11.e(err);
+                } finally{
+                    _iterator11.f();
+                }
+            }
+        },
+        {
+            key: "show",
+            value: function show(elements, display) {
+                elements = this.wrap(elements);
+                var _iterator12 = _createForOfIteratorHelper(elements), _step12;
+                try {
+                    for(_iterator12.s(); !(_step12 = _iterator12.n()).done;){
+                        var element = _step12.value;
+                        element.style.display = element.dataset.initialDisplay || display || "block";
+                    }
+                } catch (err) {
+                    _iterator12.e(err);
+                } finally{
+                    _iterator12.f();
+                }
+            }
+        },
+        {
+            key: "wrap",
+            value: function wrap(input) {
+                return typeof input[Symbol.iterator] === "function" && typeof input !== "string" ? input : [
+                    input
+                ];
+            }
+        },
+        {
+            key: "on",
+            value: function on(events, callback) {
+                events = this.wrap(events);
+                var _iterator13 = _createForOfIteratorHelper(this.elements), _step13;
+                try {
+                    for(_iterator13.s(); !(_step13 = _iterator13.n()).done;){
+                        var element = _step13.value;
+                        if (!element.fullyNamespacedEvents) element.fullyNamespacedEvents = {};
+                        var _iterator14 = _createForOfIteratorHelper(events), _step14;
+                        try {
+                            for(_iterator14.s(); !(_step14 = _iterator14.n()).done;){
+                                var event = _step14.value;
+                                element.fullyNamespacedEvents[event] = callback;
+                                element.addEventListener(event, callback);
+                            }
+                        } catch (err) {
+                            _iterator14.e(err);
+                        } finally{
+                            _iterator14.f();
+                        }
+                    }
+                } catch (err) {
+                    _iterator13.e(err);
+                } finally{
+                    _iterator13.f();
+                }
+                return this;
+            }
+        },
+        {
+            key: "off",
+            value: function off(events) {
+                events = this.wrap(events);
+                var _iterator15 = _createForOfIteratorHelper(this.elements), _step15;
+                try {
+                    for(_iterator15.s(); !(_step15 = _iterator15.n()).done;){
+                        var element = _step15.value;
+                        var _iterator16 = _createForOfIteratorHelper(events), _step16;
+                        try {
+                            for(_iterator16.s(); !(_step16 = _iterator16.n()).done;){
+                                var event = _step16.value;
+                                if (typeof element.fullyNamespacedEvents !== "undefined" && event in element.fullyNamespacedEvents) element.removeEventListener(event, element.fullyNamespacedEvents[event]);
+                            }
+                        } catch (err) {
+                            _iterator16.e(err);
+                        } finally{
+                            _iterator16.f();
+                        }
+                    }
+                } catch (err) {
+                    _iterator15.e(err);
+                } finally{
+                    _iterator15.f();
+                }
+                return this;
+            }
+        },
+        {
+            key: "open",
+            value: function open(elem) {
+                var position = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
+                elem = elem || this.elements[0];
+                if (typeof jQuery !== "undefined" && elem instanceof jQuery) elem = elem.get(0);
+                if (position > 0) elem = this.elements[position];
+                this.initialImageIndex = this.elements.indexOf(elem);
+                if (this.initialImageIndex > -1) this.openImage(elem);
+            }
+        },
+        {
+            key: "openPosition",
+            value: function openPosition(position) {
+                var elem = this.elements[position];
+                this.open(elem, position);
+            }
+        },
+        {
+            key: "next",
+            value: function next() {
+                this.loadImage(1);
+            }
+        },
+        {
+            key: "prev",
+            value: function prev() {
+                this.loadImage(-1);
+            }
+        },
+        {
+            key: "getLighboxData",
+            value: function getLighboxData() {
+                return {
+                    currentImageIndex: this.currentImageIndex,
+                    currentImage: this.currentImage,
+                    globalScrollbarWidth: this.globalScrollbarWidth
+                };
+            }
+        },
+        {
+            key: "destroy",
+            value: function destroy() {
+                //remove all custom event listeners from elements
+                this.off([
+                    "close." + this.eventNamespace,
+                    "closed." + this.eventNamespace,
+                    "nextImageLoaded." + this.eventNamespace,
+                    "prevImageLoaded." + this.eventNamespace,
+                    "change." + this.eventNamespace,
+                    "nextDone." + this.eventNamespace,
+                    "prevDone." + this.eventNamespace,
+                    "error." + this.eventNamespace,
+                    "changed." + this.eventNamespace,
+                    "next." + this.eventNamespace,
+                    "prev." + this.eventNamespace,
+                    "show." + this.eventNamespace,
+                    "shown." + this.eventNamespace
+                ]);
+                this.removeEventListener(this.elements, "click." + this.eventNamespace);
+                this.removeEventListener(document, "focusin." + this.eventNamespace);
+                this.removeEventListener(document.body, "contextmenu." + this.eventNamespace);
+                this.removeEventListener(document.body, "keyup." + this.eventNamespace);
+                this.removeEventListener(this.domNodes.navigation.getElementsByTagName("button"), "click." + this.eventNamespace);
+                this.removeEventListener(this.domNodes.closeButton, "click." + this.eventNamespace);
+                this.removeEventListener(window, "resize." + this.eventNamespace);
+                this.removeEventListener(window, "hashchange." + this.eventNamespace);
+                this.close();
+                if (this.isOpen) {
+                    document.body.removeChild(this.domNodes.wrapper);
+                    document.body.removeChild(this.domNodes.overlay);
+                }
+                this.elements = null;
+            }
+        },
+        {
+            key: "refresh",
+            value: function refresh() {
+                if (!this.initialSelector) throw "refreshing only works when you initialize using a selector!";
+                var options = this.options, selector = this.initialSelector;
+                this.destroy();
+                this.constructor(selector, options);
+                return this;
+            }
+        }
+    ]);
+    return SimpleLightbox1;
+}();
+var _default = SimpleLightbox;
+exports["default"] = _default;
+global.SimpleLightbox = SimpleLightbox;
+
+},{}],"kaxSc":[function() {},{}]},["1RB6v","8lqZg"], "8lqZg", "parcelRequired7c6")
 
 //# sourceMappingURL=index.975ef6c8.js.map
