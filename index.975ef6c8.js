@@ -560,7 +560,7 @@ submitForm.addEventListener("click", (event)=>{
                 lightbox.refresh();
             });
         } catch (error) {
-            console.log(error);
+            (0, _notiflixNotifyAio.Notify).failure(error);
         }
     };
     result(inputForm.value);
@@ -609,7 +609,7 @@ buttonMore.addEventListener("click", (event)=>{
                 lightbox.refresh();
             });
         } catch (error) {
-            console.log(error);
+            (0, _notiflixNotifyAio.Notify).failure(error);
         }
     };
     result(inputForm.value, pageCounter);
